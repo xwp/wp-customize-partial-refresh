@@ -2,6 +2,8 @@
 
 class WP_Customize_Partial_Refresh_Plugin {
 
+	const VERSION = '0.1';
+
 	/**
 	 * @var array
 	 */
@@ -47,6 +49,32 @@ class WP_Customize_Partial_Refresh_Plugin {
 	function init() {
 		$this->config = apply_filters( 'customize_partial_refresh_config', $this->config, $this );
 		do_action( 'customize_partial_refresh_init', $this );
+	}
+
+	/**
+	 * @return string
+	 */
+	function get_version() {
+		// @todo Read from plugin metadata block
+		return self::VERSION;
+	}
+
+	/**
+	 * @param string $path
+	 *
+	 * @return string
+	 */
+	function get_dir_url( $path = '/' ) {
+		return trailingslashit( $this->dir_url ) . ltrim( $path, '/' );
+	}
+
+	/**
+	 * @param string $path
+	 *
+	 * @return string
+	 */
+	function get_dir_path( $path = '/' ) {
+		return trailingslashit( $this->dir_path ) . ltrim( $path, '/' );
 	}
 
 	/**
