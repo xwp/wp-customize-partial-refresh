@@ -10,6 +10,8 @@ Refresh parts of a preview instead of reloading the entire page when a setting c
 **Stable tag:** trunk (master)  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
+[![Build Status](https://travis-ci.org/xwp/wp-customize-partial-refresh.png?branch=master)](https://travis-ci.org/xwp/wp-customize-partial-refresh) 
+
 ## Description ##
 
 The WordPress Customizer is a framework for previewing any change to a site.
