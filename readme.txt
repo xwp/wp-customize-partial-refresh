@@ -7,7 +7,7 @@ Stable tag:        trunk
 License:           GPLv2 or later
 License URI:       http://www.gnu.org/licenses/gpl-2.0.html
 
-Refresh parts of a preview instead of reloading the entire page when a setting changed without transport=postMessage.
+Refresh parts of a Customizer preview instead of reloading the entire page when a setting changed without transport=postMessage.
 
 == Description ==
 
