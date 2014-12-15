@@ -231,7 +231,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			'render_widget_query_var' => self::RENDER_WIDGET_QUERY_VAR,
 			'render_widget_nonce_value' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
 			'render_widget_nonce_post_key' => self::RENDER_WIDGET_NONCE_POST_KEY,
-			'request_uri' => wp_unslash( $_SERVER['REQUEST_URI'] ),
+			'request_uri' => ! empty( $_SERVER['REQUEST_URI'] ) ? wp_unslash( esc_url_raw( $_SERVER['REQUEST_URI'] ) ) : '/',
 			'sidebars_eligible_for_post_message' => $this->get_sidebars_supporting_partial_refresh(),
 			'widgets_eligible_for_post_message' => $this->get_widgets_supporting_partial_refresh(),
 			'preview_customize_nonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
@@ -253,7 +253,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 		 */
 		global $wp_customize, $wp_registered_widgets, $wp_registered_sidebars;
 
-		if ( empty( $_POST[ self::RENDER_WIDGET_QUERY_VAR ] ) || empty( $wp_customize ) ) {
+		if ( empty( $_POST[ self::RENDER_WIDGET_QUERY_VAR ] ) || empty( $wp_customize ) ) { // wpcs: input var okay
 			return;
 		}
 
@@ -264,10 +264,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			do_action( 'load-widgets.php' );
 			do_action( 'widgets.php' );
 
-			if ( empty( $_POST['widget_id'] ) ) {
-				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing widget_id param', 'customize-partial-preview-refresh' ) );
-			}
-			if ( empty( $_POST[ self::RENDER_WIDGET_NONCE_POST_KEY ] ) ) {
+			if ( empty( $_POST[ self::RENDER_WIDGET_NONCE_POST_KEY ] ) ) { // wpcs: input var okay
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing nonce param', 'customize-partial-preview-refresh' ) );
 			}
 			if ( ! check_ajax_referer( self::RENDER_WIDGET_AJAX_ACTION, self::RENDER_WIDGET_NONCE_POST_KEY, false ) ) {
@@ -276,7 +273,10 @@ class WP_Customize_Partial_Refresh_Widgets {
 			if ( ! current_user_can( 'edit_theme_options' ) ) {
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Current user cannot!', 'customize-partial-preview-refresh' ) );
 			}
-			$widget_id = wp_unslash( $_POST['widget_id'] );
+			if ( empty( $_POST['widget_id'] ) ) { // wpcs: input var okay
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing widget_id param', 'customize-partial-preview-refresh' ) );
+			}
+			$widget_id = wp_unslash( sanitize_text_field( $_POST['widget_id'] ) ); // wpcs: input var okay; sanitize_text_field for WordPress-VIP
 			if ( ! isset( $wp_registered_widgets[ $widget_id ] ) ) {
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Unable to find registered widget', 'customize-partial-preview-refresh' ) );
 			}
