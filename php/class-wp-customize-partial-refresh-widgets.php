@@ -45,15 +45,6 @@ class WP_Customize_Partial_Refresh_Widgets {
 
 	function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
 		$this->plugin = $plugin;
-
-
-		// @todo add_theme_support( 'customize-partial-refresh', array( 'widgets' ) )
-		// @todo change widget transport
-		// @todo When adding a new widget setting, force it to transport=postMessage if the sidebar supports it
-
-		// @todo Upon preview load, change sidebar_widgets settings to use transport=postMessage if the sidebar is active; if not active, change sidebar_widgets setting to transport=refresh
-		// @todo All widget settings can have their transport forced to postMessage
-
 		$this->add_builtin_theme_support();
 		add_action( 'after_setup_theme', array( $this, 'init' ), 1 );
 	}
@@ -133,6 +124,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 	 * @action customize_preview_init
 	 */
 	function customize_preview_init() {
+		add_action( 'template_redirect', array( $this, 'render_widget' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'customize_preview_enqueue_deps' ) );
 	}
 
@@ -206,7 +198,11 @@ class WP_Customize_Partial_Refresh_Widgets {
 	 * @action wp_enqueue_scripts
 	 */
 	function customize_preview_enqueue_deps() {
-		global $wp_registered_sidebars;
+		/**
+		 * @var WP_Customize_Manager $wp_customize
+		 * @var WP_Scripts $wp_scripts
+		 */
+		global $wp_registered_sidebars, $wp_customize, $wp_scripts;
 
 		$script_handle = 'customize-partial-refresh-widgets-preview';
 		$src = $this->plugin->get_dir_url( 'js/customize-preview-widgets.js' );
@@ -230,24 +226,111 @@ class WP_Customize_Partial_Refresh_Widgets {
 		}
 
 		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings
-		/**
-		 * @var WP_Scripts $wp_scripts
-		 */
-		global $wp_scripts;
 		$exports = array(
 			'registered_sidebars' => $wp_registered_sidebars,
-			'render_widget_ajax_action' => self::RENDER_WIDGET_AJAX_ACTION,
+			'render_widget_query_var' => self::RENDER_WIDGET_QUERY_VAR,
 			'render_widget_nonce_value' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
 			'render_widget_nonce_post_key' => self::RENDER_WIDGET_NONCE_POST_KEY,
 			'request_uri' => wp_unslash( $_SERVER['REQUEST_URI'] ),
 			'sidebars_eligible_for_post_message' => $this->get_sidebars_supporting_partial_refresh(),
 			'widgets_eligible_for_post_message' => $this->get_widgets_supporting_partial_refresh(),
+			'preview_customize_nonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
 		);
 		$wp_scripts->add_data(
 			$script_handle,
 			'data',
 			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
 		);
+	}
+
+	/**
+	 * @see dynamic_sidebar()
+	 * @action template_redirect
+	 */
+	static function render_widget() {
+		/**
+		 * @var WP_Customize_Manager $wp_customize
+		 */
+		global $wp_customize, $wp_registered_widgets, $wp_registered_sidebars;
+
+		if ( empty( $_POST[ self::RENDER_WIDGET_QUERY_VAR ] ) || empty( $wp_customize ) ) {
+			return;
+		}
+
+		$generic_error = __( 'An error has occurred. Please reload the page and try again.', 'customize-partial-preview-refresh' );
+		try {
+			$wp_customize->remove_preview_signature();
+
+			do_action( 'load-widgets.php' );
+			do_action( 'widgets.php' );
+
+			if ( empty( $_POST['widget_id'] ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing widget_id param', 'customize-partial-preview-refresh' ) );
+			}
+			if ( empty( $_POST[ self::RENDER_WIDGET_NONCE_POST_KEY ] ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing nonce param', 'customize-partial-preview-refresh' ) );
+			}
+			if ( ! check_ajax_referer( self::RENDER_WIDGET_AJAX_ACTION, self::RENDER_WIDGET_NONCE_POST_KEY, false ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Nonce check failed. Reload and try again?', 'customize-partial-preview-refresh' ) );
+			}
+			if ( ! current_user_can( 'edit_theme_options' ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Current user cannot!', 'customize-partial-preview-refresh' ) );
+			}
+			$widget_id = wp_unslash( $_POST['widget_id'] );
+			if ( ! isset( $wp_registered_widgets[ $widget_id ] ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Unable to find registered widget', 'customize-partial-preview-refresh' ) );
+			}
+			$widget = $wp_registered_widgets[ $widget_id ];
+
+			$rendered_widget = null;
+			$sidebar_id = is_active_widget( $widget['callback'], $widget['id'], false, false );
+
+			if ( $sidebar_id ) {
+				$sidebar = $wp_registered_sidebars[ $sidebar_id ];
+				$widget_name = $widget['name'];
+				$params = array_merge(
+					array( array_merge( $sidebar, compact( 'widget_id', 'widget_name' ) ) ),
+					(array) $widget['params']
+				);
+
+				$callback = $widget['callback'];
+				if ( ! is_array( $callback ) || ! ( $callback[0] instanceof WP_Widget ) ) {
+					throw new WP_Customize_Partial_Refresh_Exception( __( 'Only Widgets 2.0 are supported. Old single widgets are not.', 'customize-partial-preview-refresh' ) );
+				}
+
+				// Substitute HTML id and class attributes into before_widget
+				$class_name = '';
+				foreach ( (array) $widget['classname'] as $cn ) {
+					if ( is_string( $cn ) ) {
+						$class_name .= '_' . $cn;
+					} else if ( is_object( $cn ) ) {
+						$class_name .= '_' . get_class( $cn );
+					}
+				}
+				$class_name = ltrim( $class_name, '_' );
+
+				$params[0]['before_widget'] = sprintf( $params[0]['before_widget'], $widget_id, $class_name );
+				$params = apply_filters( 'dynamic_sidebar_params', $params );
+
+				// Render the widget
+				ob_start();
+				do_action( 'dynamic_sidebar', $widget );
+				if ( is_callable( $callback ) ) {
+					call_user_func_array( $callback, $params );
+				}
+				$rendered_widget = ob_get_clean();
+			}
+			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id' ) );
+		}
+		catch ( Exception $e ) {
+			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
+				$message = $e->getMessage();
+			} else {
+				error_log( sprintf( '%s in %s: %s', get_class( $e ), __FUNCTION__, $e->getMessage() ) );
+				$message = $generic_error;
+			}
+			wp_send_json_error( compact( 'message' ) );
+		}
 	}
 
 }

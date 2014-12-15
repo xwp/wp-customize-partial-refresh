@@ -1,13 +1,14 @@
 /*global jQuery, _wpCustomizePartialRefreshWidgets_exports, _ */
-( function ( $ ) {
+wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	'use strict';
 
 	var self = {
-		sidebars_eligible_for_post_message: {},
-		widgets_eligible_for_post_message: {},
-		render_widget_ajax_action: null,
+		sidebars_eligible_for_post_message: [],
+		widgets_eligible_for_post_message: [],
+		render_widget_query_var: null,
 		render_widget_nonce_value: null,
-		render_widget_nonce_post_key: null
+		render_widget_nonce_post_key: null,
+		preview_customize_nonce: null
 	};
 
 	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
@@ -24,7 +25,7 @@
 	 */
 	self.sidebarCanLivePreview = function ( sidebar_id ) {
 		var widget_ids, rendered_widget_ids;
-		if ( ! self.sidebars_eligible_for_post_message[ sidebar_id ] ) {
+		if ( -1 === self.sidebars_eligible_for_post_message.indexOf( sidebar_id ) ) {
 			return false;
 		}
 		widget_ids = wp.customize( self.sidebar_id_to_setting_id( sidebar_id ) )();
@@ -60,7 +61,7 @@
 				setting = parent.wp.customize( setting_id );
 				widget_transport = 'refresh';
 				id_base = self.widget_id_to_base( widget_id );
-				if ( sidebar_transport === 'postMessage' && self.widgets_eligible_for_post_message[id_base] ) {
+				if ( sidebar_transport === 'postMessage' && ( -1 !== self.widgets_eligible_for_post_message.indexOf( id_base ) ) ) {
 					widget_transport = 'postMessage';
 				}
 				if ( 'refresh' === widget_transport && 'postMessage' === setting.transport ) {
@@ -119,17 +120,16 @@
 						throw new Error( 'Widget does not exist in a sidebar.' );
 					}
 					data = {
-						widget_customizer_render_widget: 1,
-						action: self.render_widget_ajax_action,
 						widget_id: widget_id,
-						setting_id: setting_id,
-						instance: JSON.stringify( to )
+						nonce: self.preview_customize_nonce, // for Customize Preview
+						wp_customize: 'on'
 					};
+					data[ self.render_widget_query_var ] = '1';
 					customized = {};
 					customized[ self.sidebar_id_to_setting_id( sidebar_id ) ] = sidebar_widgets;
-					customized[setting_id] = to;
-					data.customized = JSON.stringify(customized);
-					data[self.render_widget_nonce_post_key] = self.render_widget_nonce_value;
+					customized[ setting_id ] = to;
+					data.customized = JSON.stringify( customized );
+					data[ self.render_widget_nonce_post_key ] = self.render_widget_nonce_value;
 
 					$.post( self.request_uri, data, function ( r ) {
 						if ( ! r.success ) {
