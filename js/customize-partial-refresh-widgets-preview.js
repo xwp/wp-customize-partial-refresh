@@ -1,5 +1,5 @@
 /*global jQuery, _wpCustomizePartialRefreshWidgets_exports, _ */
-wp.customize.partialPreviewWidgets = ( function ( $ ) {
+wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	'use strict';
 
 	var self = {
@@ -14,7 +14,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
 
 	self.init = function () {
-		self.preview = wp.customize.WidgetCustomizerPreview.preview;
 		this.livePreview();
 	};
 
@@ -71,7 +70,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			} );
 		} );
 		if ( changed_to_refresh ) {
-			self.preview.send( 'refresh' );
+			api.preview.send( 'refresh' );
 		}
 	};
 
@@ -164,7 +163,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 								after_widget.before( new_widget );
 							}
 						}
-						self.preview.send( 'widget-updated', widget_id );
+						api.preview.send( 'widget-updated', widget_id );
 						wp.customize.trigger( 'sidebar-updated', sidebar_id );
 						wp.customize.trigger( 'widget-updated', widget_id );
 
@@ -218,7 +217,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 							if ( 'postMessage' === parent_setting.transport ) {
 								setting.callbacks.fireWith( setting, [ setting(), null ] );
 							} else {
-								self.preview.send( 'refresh' );
+								api.preview.send( 'refresh' );
 							}
 						}
 					} );
@@ -294,5 +293,5 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	} );
 
 	return self;
-}( jQuery ));
+}( jQuery, wp.customize ));
 
