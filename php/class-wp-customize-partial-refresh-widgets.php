@@ -205,13 +205,13 @@ class WP_Customize_Partial_Refresh_Widgets {
 		global $wp_registered_sidebars, $wp_customize, $wp_scripts;
 
 		$script_handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->plugin->get_dir_url( 'js/customize-preview-widgets.js' );
+		$src = $this->plugin->get_dir_url( 'js/customize-partial-refresh-widgets-preview.js' );
 		$deps = array( 'jquery', 'wp-util', 'customize-preview' );
 		$in_footer = true;
 		wp_enqueue_script( $script_handle, $src, $deps, $this->plugin->get_version(), $in_footer );
 
 		$style_handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->plugin->get_dir_url( 'css/customize-preview-widgets.css' );
+		$src = $this->plugin->get_dir_url( 'css/customize-partial-refresh-widgets-preview.css' );
 		$deps = array();
 		wp_enqueue_style( $style_handle, $src, $deps, $this->plugin->get_version() );
 
