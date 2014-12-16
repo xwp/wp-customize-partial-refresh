@@ -131,6 +131,8 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 					data.customized = JSON.stringify( customized );
 					data[ self.render_widget_nonce_post_key ] = self.render_widget_nonce_value;
 
+					$( '#' + widget_id ).addClass( 'customize-partial-refreshing' );
+
 					$.post( self.request_uri, data, function ( r ) {
 						if ( ! r.success ) {
 							throw new Error( r.data && r.data.message ? r.data.message : 'FAIL' );

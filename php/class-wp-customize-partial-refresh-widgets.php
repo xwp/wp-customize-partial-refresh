@@ -210,6 +210,11 @@ class WP_Customize_Partial_Refresh_Widgets {
 		$in_footer = true;
 		wp_enqueue_script( $script_handle, $src, $deps, $this->plugin->get_version(), $in_footer );
 
+		$style_handle = 'customize-partial-refresh-widgets-preview';
+		$src = $this->plugin->get_dir_url( 'css/customize-preview-widgets.css' );
+		$deps = array();
+		wp_enqueue_style( $style_handle, $src, $deps, $this->plugin->get_version() );
+
 		// Enqueue any scripts provided to add live preview support for builtin themes (e.g. twentythirteen)
 		$applied_themes = array( get_template() );
 		if ( get_stylesheet() !== get_template() ) {
