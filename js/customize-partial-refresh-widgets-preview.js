@@ -164,8 +164,8 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 							}
 						}
 						api.preview.send( 'widget-updated', widget_id );
-						wp.customize.trigger( 'sidebar-updated', sidebar_id );
-						wp.customize.trigger( 'widget-updated', widget_id );
+						api.trigger( 'sidebar-updated', sidebar_id );
+						api.trigger( 'widget-updated', widget_id );
 
 						parent.wp.customize.control( setting_id ).active( 0 !== new_widget.length ); // @todo Eliminate use of parent by sending messages
 						self.refreshTransports();
@@ -176,7 +176,7 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 			already_bound_widgets[setting_id] = binder;
 		};
 
-		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebar_id ) {
+		$.each( _.keys( api.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebar_id ) {
 			var setting_id = self.sidebar_id_to_setting_id( sidebar_id );
 			wp.customize( setting_id, function( value ) {
 				var update_count = 0;
@@ -202,7 +202,7 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 						setting_id = self.widget_id_to_setting_id( widget_id );
 						setting = wp.customize( setting_id );
 						if ( ! setting ) {
-							setting = wp.customize.create( setting_id, {} );
+							setting = api.create( setting_id, {} );
 						}
 
 						// @todo Is there another way to check if we bound?
@@ -226,8 +226,8 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 					$.each( from, function ( i, old_widget_id ) {
 						if ( -1 === to.indexOf( old_widget_id ) ) {
 							var setting_id = self.widget_id_to_setting_id( old_widget_id );
-							if ( wp.customize.has( setting_id ) ) {
-								wp.customize.remove( setting_id );
+							if ( api.has( setting_id ) ) {
+								api.remove( setting_id );
 								// @todo WARNING: If a widget is moved to another sidebar, we need to either not do this, or force a refresh when a widget is  moved to another sidebar
 							}
 							$( '#' + old_widget_id ).remove();
@@ -236,15 +236,15 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 
 					// If a widget was removed so that no widgets remain rendered in sidebar, we need to disable postMessage
 					self.refreshTransports();
-					wp.customize.trigger( 'sidebar-updated', sidebar_id );
+					api.trigger( 'sidebar-updated', sidebar_id );
 				} );
 			} );
 		} );
 
-		$.each( wp.customize.WidgetCustomizerPreview.renderedWidgets, function ( widget_id ) {
+		$.each( api.WidgetCustomizerPreview.renderedWidgets, function ( widget_id ) {
 			var setting_id = self.widget_id_to_setting_id( widget_id );
-			if ( ! wp.customize.has( setting_id ) ) {
-				// Used to have to do this: wp.customize.create( setting_id, instance );
+			if ( ! api.has( setting_id ) ) {
+				// Used to have to do this: api.create( setting_id, instance );
 				// Now that the settings are registered at the `wp` action, it is late enough
 				// for all filters to be added, e.g. sidebars_widgets for Widget Visibility
 				throw new Error( 'Expected customize to have registered setting for widget ' + widget_id );
