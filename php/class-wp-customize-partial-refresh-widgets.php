@@ -57,6 +57,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			return;
 		}
 		add_filter( 'widget_customizer_setting_args', array( $this, 'filter_widget_customizer_setting_args' ), 10, 2 );
+		add_action( 'customize_controls_init', array( $this, 'customize_controls_init' ) );
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 	}
 
@@ -192,6 +193,33 @@ class WP_Customize_Partial_Refresh_Widgets {
 			}
 		}
 		return $supporting_sidebar_ids;
+	}
+
+	/**
+	 * Add scripts for customizing the Customizer pane
+	 */
+	function customize_controls_init() {
+		/**
+		 * @var WP_Scripts $wp_scripts
+		 */
+		global $wp_scripts;
+
+		$script_handle = 'customize-partial-refresh-widgets-pane';
+		$src = $this->plugin->get_dir_url( 'js/customize-partial-refresh-widgets-pane.js' );
+		$deps = array( 'jquery', 'wp-util', 'customize-controls' );
+		$in_footer = true;
+		wp_enqueue_script( $script_handle, $src, $deps, $this->plugin->get_version(), $in_footer );
+
+		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings
+		$exports = array(
+			'sidebars_eligible_for_post_message' => $this->get_sidebars_supporting_partial_refresh(),
+			'widgets_eligible_for_post_message' => $this->get_widgets_supporting_partial_refresh(),
+		);
+		$wp_scripts->add_data(
+			$script_handle,
+			'data',
+			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
+		);
 	}
 
 	/**
