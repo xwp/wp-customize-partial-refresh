@@ -12,20 +12,16 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	self.init = function () {
 
 		api.bind( 'add', function ( setting ) {
-			var matches, id_base, widget_number;
-
+			var matches, id_base;
 			matches = setting.id.match( /^widget_(.+?)\[(\d+)\]$/ );
 			if ( ! matches ) {
 				return;
 			}
 			id_base = matches[1];
-			widget_number = matches[2];
 			if ( -1 !== self.widgets_eligible_for_post_message.indexOf( id_base ) ) {
 				setting.transport = 'postMessage';
 			}
 		} );
-		//setting = api.create( settingId, settingId, '', settingArgs ); // @todo we need force the setting to be transport.postMessage if it is eligible
-		//setting.set( {} ); // mark dirty, changing from '' to {}
 	};
 
 	/**
