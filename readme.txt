@@ -46,17 +46,17 @@ as menus, inline styles, or arbitrary regions registered.
 
 To opt-in to partial preview refreshes for a theme, add:
 
-`add_theme_support( 'customize-partial-refresh-widgets' );`
+<pre lang="php">add_theme_support( 'customize-partial-refresh-widgets' );</pre>
 
 When this is done, widgets in Core will automatically use partial refreshes.
 To opt-in to partial refreshes for other widget types, use this to opt-in for
 a specific widget:
 
-`add_filter( "customize_widget_partial_refreshable_{$id_base}", '__return_true' );`
+<pre lang="php">add_filter( "customize_widget_partial_refreshable_{$id_base}", '__return_true' );</pre>
 
 And use this to opt-in everything:
 
-`add_filter( 'customize_widget_partial_refreshable', '__return_true' );`
+<pre lang="php">add_filter( 'customize_widget_partial_refreshable', '__return_true' );</pre>
 
 == Changelog ==
 

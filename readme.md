@@ -44,21 +44,26 @@ in a future release.
 This plugin first focuses on resurrecting partial preview refreshes for widgets.
 We can then explore adding partial refresh support to other object types, such
 as menus, inline styles, or arbitrary regions registered.
-
 ### Usage ###
 To opt-in to partial preview refreshes for a theme, add:
 
-`add_theme_support( 'customize-partial-refresh-widgets' );`
+```php
+add_theme_support( 'customize-partial-refresh-widgets' );
+```
 
 When this is done, widgets in Core will automatically use partial refreshes.
 To opt-in to partial refreshes for other widget types, use this to opt-in for
 a specific widget:
 
-`add_filter( "customize_widget_partial_refreshable_{$id_base}", '__return_true' );`
+```php
+add_filter( "customize_widget_partial_refreshable_{$id_base}", '__return_true' );
+```
 
 And use this to opt-in everything:
 
-`add_filter( 'customize_widget_partial_refreshable', '__return_true' );`
+```php
+add_filter( 'customize_widget_partial_refreshable', '__return_true' );
+```
 
 
 ## Changelog ##
