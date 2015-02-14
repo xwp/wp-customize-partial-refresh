@@ -33,13 +33,7 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$this->dir_url = $plugin_location['dir_url'];
 		$this->config = array();
 
-		if ( did_action( 'plugins_loaded' ) ) {
-			$init_action = 'after_setup_theme'; // for WordPress VIP
-		} else {
-			$init_action = 'init';
-		}
-
-		add_action( $init_action, array( $this, 'init' ) );
+		add_action( 'init', array( $this, 'init' ) );
 		$this->widgets = new WP_Customize_Partial_Refresh_Widgets( $this );
 	}
 
