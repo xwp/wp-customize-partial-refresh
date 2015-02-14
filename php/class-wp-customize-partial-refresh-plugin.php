@@ -87,18 +87,26 @@ class WP_Customize_Partial_Refresh_Plugin {
 	public function locate_plugin() {
 		$reflection = new ReflectionObject( $this );
 		$file_name = $reflection->getFileName();
-		$dir_path = preg_replace( '#(.*plugins[^/]*/[^/]+)(/.*)?#', '$1', $file_name, 1, $count );
+		if ( '/' !== DIRECTORY_SEPARATOR ) {
+			$file_name = str_replace( DIRECTORY_SEPARATOR, '/', $file_name ); // Windows compat
+		}
+		$plugin_dir = preg_replace( '#(.*plugins[^/]*/[^/]+)(/.*)?#', '$1', $file_name, 1, $count );
 		if ( 0 === $count ) {
 			throw new Exception( "Class not located within a directory tree containing 'plugins': $file_name" );
 		}
 
 		// Make sure that we can reliably get the relative path inside of the content directory
 		$content_dir = trailingslashit( WP_CONTENT_DIR );
-		if ( 0 !== strpos( $dir_path, $content_dir ) ) {
+		if ( '/' !== DIRECTORY_SEPARATOR ) {
+			$content_dir = str_replace( DIRECTORY_SEPARATOR, '/', $content_dir ); // Windows compat
+		}
+		if ( 0 !== strpos( $plugin_dir, $content_dir ) ) {
 			throw new Exception( 'Plugin dir is not inside of WP_CONTENT_DIR' );
 		}
-		$content_sub_path = substr( $dir_path, strlen( $content_dir ) );
+		$content_sub_path = substr( $plugin_dir, strlen( $content_dir ) );
 		$dir_url = content_url( trailingslashit( $content_sub_path ) );
-		return compact( 'dir_url', 'dir_path' );
+		$dir_path = $plugin_dir;
+		$dir_basename = basename( $plugin_dir );
+		return compact( 'dir_url', 'dir_path', 'dir_basename' );
 	}
 }
