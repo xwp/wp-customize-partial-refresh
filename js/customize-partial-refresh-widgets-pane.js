@@ -4,7 +4,8 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 
 	var self = {
 		sidebarsEligibleForPostMessage: [],
-		widgetsEligibleForPostMessage: []
+		widgetsEligibleForPostMessage: [],
+		ready: $.Deferred()
 	};
 
 	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
@@ -25,6 +26,10 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	};
 
 	api.bind( 'ready', function () {
+		self.ready.resolve();
+	} );
+
+	self.ready.done( function () {
 		self.init();
 	} );
 
