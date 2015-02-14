@@ -317,42 +317,46 @@ class WP_Customize_Partial_Refresh_Widgets {
 
 			$rendered_widget = null;
 			$sidebar_id = is_active_widget( $widget['callback'], $widget['id'], false, false );
-
-			if ( $sidebar_id ) {
-				$sidebar = $wp_registered_sidebars[ $sidebar_id ];
-				$widget_name = $widget['name'];
-				$params = array_merge(
-					array( array_merge( $sidebar, compact( 'widget_id', 'widget_name' ) ) ),
-					(array) $widget['params']
-				);
-
-				$callback = $widget['callback'];
-				if ( ! is_array( $callback ) || ! ( $callback[0] instanceof WP_Widget ) ) {
-					throw new WP_Customize_Partial_Refresh_Exception( __( 'Only Widgets 2.0 are supported. Old single widgets are not.', 'customize-partial-preview-refresh' ) );
-				}
-
-				// Substitute HTML id and class attributes into before_widget
-				$class_name = '';
-				foreach ( (array) $widget['classname'] as $cn ) {
-					if ( is_string( $cn ) ) {
-						$class_name .= '_' . $cn;
-					} else if ( is_object( $cn ) ) {
-						$class_name .= '_' . get_class( $cn );
-					}
-				}
-				$class_name = ltrim( $class_name, '_' );
-
-				$params[0]['before_widget'] = sprintf( $params[0]['before_widget'], $widget_id, $class_name );
-				$params = apply_filters( 'dynamic_sidebar_params', $params );
-
-				// Render the widget
-				ob_start();
-				do_action( 'dynamic_sidebar', $widget );
-				if ( is_callable( $callback ) ) {
-					call_user_func_array( $callback, $params );
-				}
-				$rendered_widget = ob_get_clean();
+			if ( empty( $sidebar_id ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render inactive widget.', 'customize-partial-preview-refresh' ), $widget['id'] ) );
 			}
+			if ( 'wp_inactive_widgets' === $sidebar_id ) {
+				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render widget %s on the wp_inactive_widgets sidebar', 'customize-partial-preview-refresh' ), $widget['id'] ) );
+			}
+
+			$sidebar = $wp_registered_sidebars[ $sidebar_id ];
+			$widget_name = $widget['name'];
+			$params = array_merge(
+				array( array_merge( $sidebar, compact( 'widget_id', 'widget_name' ) ) ),
+				(array) $widget['params']
+			);
+
+			$callback = $widget['callback'];
+			if ( ! is_array( $callback ) || ! ( $callback[0] instanceof WP_Widget ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Only Widgets 2.0 are supported. Old single widgets are not.', 'customize-partial-preview-refresh' ) );
+			}
+
+			// Substitute HTML id and class attributes into before_widget
+			$class_name = '';
+			foreach ( (array) $widget['classname'] as $cn ) {
+				if ( is_string( $cn ) ) {
+					$class_name .= '_' . $cn;
+				} else if ( is_object( $cn ) ) {
+					$class_name .= '_' . get_class( $cn );
+				}
+			}
+			$class_name = ltrim( $class_name, '_' );
+
+			$params[0]['before_widget'] = sprintf( $params[0]['before_widget'], $widget_id, $class_name );
+			$params = apply_filters( 'dynamic_sidebar_params', $params );
+
+			// Render the widget
+			ob_start();
+			do_action( 'dynamic_sidebar', $widget );
+			if ( is_callable( $callback ) ) {
+				call_user_func_array( $callback, $params );
+			}
+			$rendered_widget = ob_get_clean();
 			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id' ) );
 		}
 		catch ( Exception $e ) {
