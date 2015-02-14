@@ -20,19 +20,19 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 	/**
 	 * if the containing sidebar is eligible, and if there are sibling widgets the sidebar currently rendered
-	 * @param {String} sidebar_id
+	 * @param {String} sidebarId
 	 * @return {Boolean}
 	 */
-	self.sidebarCanLivePreview = function ( sidebar_id ) {
-		var widget_ids, rendered_widget_ids;
-		if ( -1 === self.sidebars_eligible_for_post_message.indexOf( sidebar_id ) ) {
+	self.sidebarCanLivePreview = function ( sidebarId ) {
+		var widgetIds, renderedWidgetIds;
+		if ( -1 === self.sidebars_eligible_for_post_message.indexOf( sidebarId ) ) {
 			return false;
 		}
-		widget_ids = wp.customize( self.sidebar_id_to_setting_id( sidebar_id ) )();
-		rendered_widget_ids = _( widget_ids ).filter( function ( widget_id ) {
-			return 0 !== $( '#' + widget_id ).length;
+		widgetIds = wp.customize( self.sidebar_id_to_setting_id( sidebarId ) )();
+		renderedWidgetIds = _( widgetIds ).filter( function ( widgetId ) {
+			return 0 !== $( '#' + widgetId ).length;
 		} );
-		return ( rendered_widget_ids.length !== 0 );
+		return ( renderedWidgetIds.length !== 0 );
 	};
 
 	/**
@@ -42,35 +42,35 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 * postMessage to refresh, the preview window will request a refresh.
 	 */
 	self.refreshTransports = function () {
-		var changed_to_refresh = false;
-		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebar_id ) {
-			var setting_id, setting, sidebar_transport, widget_ids;
+		var changedToRefresh = false;
+		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
+			var settingId, setting, sidebarTransport, widgetIds;
 
-			setting_id = self.sidebar_id_to_setting_id( sidebar_id );
-			setting = parent.wp.customize( setting_id ); // @todo Eliminate use of parent by sending messages
-			sidebar_transport = self.sidebarCanLivePreview( sidebar_id ) ? 'postMessage' : 'refresh';
-			if ( 'refresh' === sidebar_transport && 'postMessage' === setting.transport ) {
-				changed_to_refresh = true;
+			settingId = self.sidebar_id_to_setting_id( sidebarId );
+			setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
+			sidebarTransport = self.sidebarCanLivePreview( sidebarId ) ? 'postMessage' : 'refresh';
+			if ( 'refresh' === sidebarTransport && 'postMessage' === setting.transport ) {
+				changedToRefresh = true;
 			}
-			setting.transport = sidebar_transport;
+			setting.transport = sidebarTransport;
 
-			widget_ids = wp.customize( setting_id )();
-			$.each( widget_ids, function ( i, widget_id ){
-				var setting_id, setting, widget_transport, id_base;
-				setting_id = self.widget_id_to_setting_id( widget_id );
-				setting = parent.wp.customize( setting_id ); // @todo Eliminate use of parent by sending messages
-				widget_transport = 'refresh';
-				id_base = self.widget_id_to_base( widget_id );
-				if ( sidebar_transport === 'postMessage' && ( -1 !== self.widgets_eligible_for_post_message.indexOf( id_base ) ) ) {
-					widget_transport = 'postMessage';
+			widgetIds = wp.customize( settingId ).get();
+			$.each( widgetIds, function ( i, widgetId ){
+				var settingId, setting, widgetTransport, idBase;
+				settingId = self.widget_id_to_setting_id( widgetId );
+				setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
+				widgetTransport = 'refresh';
+				idBase = self.widget_id_to_base( widgetId );
+				if ( sidebarTransport === 'postMessage' && ( -1 !== self.widgets_eligible_for_post_message.indexOf( idBase ) ) ) {
+					widgetTransport = 'postMessage';
 				}
-				if ( 'refresh' === widget_transport && 'postMessage' === setting.transport ) {
-					changed_to_refresh = true;
+				if ( 'refresh' === widgetTransport && 'postMessage' === setting.transport ) {
+					changedToRefresh = true;
 				}
-				setting.transport = widget_transport;
+				setting.transport = widgetTransport;
 			} );
 		} );
-		if ( changed_to_refresh ) {
+		if ( changedToRefresh ) {
 			self.preview.send( 'refresh' );
 		}
 	};
@@ -79,143 +79,143 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 *
 	 */
 	self.livePreview = function () {
-		var already_bound_widgets, bind_widget_setting;
+		var alreadyBoundWidgets, bindWidgetSetting;
 
-		already_bound_widgets = {};
+		alreadyBoundWidgets = {};
 
-		bind_widget_setting = function( widget_id ) {
-			var setting_id, binder;
+		bindWidgetSetting = function( widgetId ) {
+			var settingId, binder;
 
-			setting_id = self.widget_id_to_setting_id( widget_id );
+			settingId = self.widget_id_to_setting_id( widgetId );
 			binder = function( value ) {
-				var update_count;
+				var updateCount;
 
-				already_bound_widgets[ widget_id ] = true;
-				update_count = 0;
+				alreadyBoundWidgets[ widgetId ] = true;
+				updateCount = 0;
 				value.bind( function( to, from ) {
-					var widget_setting_id, sidebar_id, sidebar_widgets, data, customized;
+					var widgetSettingId, sidebarId, sidebarWidgets, data, customized;
 
 					// Workaround for http://core.trac.wordpress.org/ticket/26061;
-					// once fixed, eliminate initial_value, update_count, and this conditional
-					update_count += 1;
-					if ( 1 === update_count && _.isEqual( from, to ) ) {
+					// once fixed, eliminate initial_value, updateCount, and this conditional
+					updateCount += 1;
+					if ( 1 === updateCount && _.isEqual( from, to ) ) {
 						return;
 					}
 
-					widget_setting_id = self.widget_id_to_setting_id( widget_id );
-					if ( parent.wp.customize( widget_setting_id ).transport !== 'postMessage' ) { // @todo Eliminate use of parent by sending messages
+					widgetSettingId = self.widget_id_to_setting_id( widgetId );
+					if ( parent.wp.customize( widgetSettingId ).transport !== 'postMessage' ) { // @todo Eliminate use of parent by sending messages
 						return;
 					}
 
-					sidebar_id = null;
-					sidebar_widgets = [];
-					wp.customize.each( function ( setting, setting_id ) {
-						var matches = setting_id.match( /^sidebars_widgets\[(.+)\]/ );
-						if ( matches && setting().indexOf( widget_id ) !== -1 ) {
-							sidebar_id = matches[1];
-							sidebar_widgets = setting();
+					sidebarId = null;
+					sidebarWidgets = [];
+					wp.customize.each( function ( setting, settingId ) {
+						var matches = settingId.match( /^sidebars_widgets\[(.+)\]/ );
+						if ( matches && setting().indexOf( widgetId ) !== -1 ) {
+							sidebarId = matches[1];
+							sidebarWidgets = setting();
 						}
 					} );
-					if ( ! sidebar_id ) {
+					if ( ! sidebarId ) {
 						throw new Error( 'Widget does not exist in a sidebar.' );
 					}
 					data = {
-						widget_id: widget_id,
+						widget_id: widgetId,
 						nonce: self.preview_customize_nonce, // for Customize Preview
 						wp_customize: 'on'
 					};
 					data[ self.render_widget_query_var ] = '1';
 					customized = {};
-					customized[ self.sidebar_id_to_setting_id( sidebar_id ) ] = sidebar_widgets;
-					customized[ setting_id ] = to;
+					customized[ self.sidebar_id_to_setting_id( sidebarId ) ] = sidebarWidgets;
+					customized[ settingId ] = to;
 					data.customized = JSON.stringify( customized );
 					data[ self.render_widget_nonce_post_key ] = self.render_widget_nonce_value;
 
-					$( '#' + widget_id ).addClass( 'customize-partial-refreshing' );
+					$( '#' + widgetId ).addClass( 'customize-partial-refreshing' );
 
 					$.post( self.request_uri, data, function ( r ) {
 						if ( ! r.success ) {
 							throw new Error( r.data && r.data.message ? r.data.message : 'FAIL' );
 						}
-						var old_widget, new_widget, sidebar_widgets, position, before_widget, after_widget;
+						var oldWidget, newWidget, sidebarWidgets, position, beforeWidget, afterWidget;
 
 						// @todo Fire jQuery event to indicate that a widget was updated; here widgets can re-initialize them if they support live widgets
-						old_widget = $( '#' + widget_id );
-						new_widget = $( r.data.rendered_widget );
-						if ( new_widget.length && old_widget.length ) {
-							old_widget.replaceWith( new_widget );
-						} else if ( ! new_widget.length && old_widget.length ) {
-							old_widget.remove();
-						} else if ( new_widget.length && ! old_widget.length ) {
-							sidebar_widgets = wp.customize( self.sidebar_id_to_setting_id( r.data.sidebar_id ) )();
-							position = sidebar_widgets.indexOf( widget_id );
+						oldWidget = $( '#' + widgetId );
+						newWidget = $( r.data.rendered_widget );
+						if ( newWidget.length && oldWidget.length ) {
+							oldWidget.replaceWith( newWidget );
+						} else if ( ! newWidget.length && oldWidget.length ) {
+							oldWidget.remove();
+						} else if ( newWidget.length && ! oldWidget.length ) {
+							sidebarWidgets = wp.customize( self.sidebar_id_to_setting_id( r.data.sidebar_id ) )();
+							position = sidebarWidgets.indexOf( widgetId );
 							if ( -1 === position ) {
 								throw new Error( 'Unable to determine new widget position in sidebar' );
 							}
-							if ( sidebar_widgets.length === 1 ) {
+							if ( sidebarWidgets.length === 1 ) {
 								throw new Error( 'Unexpected postMessage for adding first widget to sidebar; refresh must be used instead.' );
 							}
 							if ( position > 0 ) {
-								before_widget = $( '#' + sidebar_widgets[ position - 1 ] );
-								before_widget.after( new_widget );
+								beforeWidget = $( '#' + sidebarWidgets[ position - 1 ] );
+								beforeWidget.after( newWidget );
 							}
 							else {
-								after_widget = $( '#' + sidebar_widgets[ position + 1 ] );
-								after_widget.before( new_widget );
+								afterWidget = $( '#' + sidebarWidgets[ position + 1 ] );
+								afterWidget.before( newWidget );
 							}
 						}
-						self.preview.send( 'widget-updated', widget_id );
-						wp.customize.trigger( 'sidebar-updated', sidebar_id );
-						wp.customize.trigger( 'widget-updated', widget_id );
+						self.preview.send( 'widget-updated', widgetId );
+						wp.customize.trigger( 'sidebar-updated', sidebarId );
+						wp.customize.trigger( 'widget-updated', widgetId );
 
-						parent.wp.customize.control( setting_id ).active( 0 !== new_widget.length ); // @todo Eliminate use of parent by sending messages
+						parent.wp.customize.control( settingId ).active( 0 !== newWidget.length ); // @todo Eliminate use of parent by sending messages
 						self.refreshTransports();
 					} );
 				} );
 			};
-			wp.customize( setting_id, binder );
-			already_bound_widgets[setting_id] = binder;
+			wp.customize( settingId, binder );
+			alreadyBoundWidgets[settingId] = binder;
 		};
 
-		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebar_id ) {
-			var setting_id = self.sidebar_id_to_setting_id( sidebar_id );
-			wp.customize( setting_id, function( value ) {
-				var update_count = 0;
+		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
+			var settingId = self.sidebar_id_to_setting_id( sidebarId );
+			wp.customize( settingId, function( value ) {
+				var updateCount = 0;
 				value.bind( function( to, from ) {
 					// Workaround for http://core.trac.wordpress.org/ticket/26061;
-					// once fixed, eliminate initial_value, update_count, and this conditional
-					update_count += 1;
-					if ( 1 === update_count && _.isEqual( from, to ) ) {
+					// once fixed, eliminate initial_value, updateCount, and this conditional
+					updateCount += 1;
+					if ( 1 === updateCount && _.isEqual( from, to ) ) {
 						return;
 					}
 
 					// Sort widgets
 					// @todo instead of appending to the parent, we should append relative to the first widget found
-					$.each( to, function ( i, widget_id ) {
-						var widget = $( '#' + widget_id );
+					$.each( to, function ( i, widgetId ) {
+						var widget = $( '#' + widgetId );
 						widget.parent().append( widget );
 					} );
 
 					// Create settings for newly-created widgets
-					$.each( to, function ( i, widget_id ) {
-						var setting_id, setting, parent_setting;
+					$.each( to, function ( i, widgetId ) {
+						var settingId, setting, parentSetting;
 
-						setting_id = self.widget_id_to_setting_id( widget_id );
-						setting = wp.customize( setting_id );
+						settingId = self.widget_id_to_setting_id( widgetId );
+						setting = wp.customize( settingId );
 						if ( ! setting ) {
-							setting = wp.customize.create( setting_id, {} );
+							setting = wp.customize.create( settingId, {} );
 						}
 
 						// @todo Is there another way to check if we bound?
-						if ( ! already_bound_widgets[widget_id] ) {
-							bind_widget_setting( widget_id );
+						if ( ! alreadyBoundWidgets[widgetId] ) {
+							bindWidgetSetting( widgetId );
 						}
 
 						// Force the callback to fire if this widget is newly-added
-						if ( from.indexOf( widget_id ) === -1 ) {
+						if ( from.indexOf( widgetId ) === -1 ) {
 							self.refreshTransports();
-							parent_setting = parent.wp.customize( setting_id );
-							if ( 'postMessage' === parent_setting.transport ) {
+							parentSetting = parent.wp.customize( settingId );
+							if ( 'postMessage' === parentSetting.transport ) {
 								setting.callbacks.fireWith( setting, [ setting(), null ] );
 							} else {
 								self.preview.send( 'refresh' );
@@ -224,33 +224,33 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 					} );
 
 					// Remove widgets (their DOM element and their setting) when removed from sidebar
-					$.each( from, function ( i, old_widget_id ) {
-						if ( -1 === to.indexOf( old_widget_id ) ) {
-							var setting_id = self.widget_id_to_setting_id( old_widget_id );
-							if ( wp.customize.has( setting_id ) ) {
-								wp.customize.remove( setting_id );
+					$.each( from, function ( i, oldWidgetId ) {
+						if ( -1 === to.indexOf( oldWidgetId ) ) {
+							var settingId = self.widget_id_to_setting_id( oldWidgetId );
+							if ( wp.customize.has( settingId ) ) {
+								wp.customize.remove( settingId );
 								// @todo WARNING: If a widget is moved to another sidebar, we need to either not do this, or force a refresh when a widget is  moved to another sidebar
 							}
-							$( '#' + old_widget_id ).remove();
+							$( '#' + oldWidgetId ).remove();
 						}
 					} );
 
 					// If a widget was removed so that no widgets remain rendered in sidebar, we need to disable postMessage
 					self.refreshTransports();
-					wp.customize.trigger( 'sidebar-updated', sidebar_id );
+					wp.customize.trigger( 'sidebar-updated', sidebarId );
 				} );
 			} );
 		} );
 
-		$.each( wp.customize.WidgetCustomizerPreview.renderedWidgets, function ( widget_id ) {
-			var setting_id = self.widget_id_to_setting_id( widget_id );
-			if ( ! wp.customize.has( setting_id ) ) {
-				// Used to have to do this: wp.customize.create( setting_id, instance );
+		$.each( wp.customize.WidgetCustomizerPreview.renderedWidgets, function ( widgetId ) {
+			var settingId = self.widget_id_to_setting_id( widgetId );
+			if ( ! wp.customize.has( settingId ) ) {
+				// Used to have to do this: wp.customize.create( settingId, instance );
 				// Now that the settings are registered at the `wp` action, it is late enough
 				// for all filters to be added, e.g. sidebars_widgets for Widget Visibility
-				throw new Error( 'Expected customize to have registered setting for widget ' + widget_id );
+				throw new Error( 'Expected customize to have registered setting for widget ' + widgetId );
 			}
-			bind_widget_setting( widget_id );
+			bindWidgetSetting( widgetId );
 		} );
 
 		// Opt-in to LivePreview
@@ -258,35 +258,34 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	};
 
 	/**
-	 * @param {String} widget_id
+	 * @param {String} widgetId
 	 * @returns {String}
 	 */
-	self.widget_id_to_setting_id = function ( widget_id ) {
-		var setting_id, matches;
-		setting_id = null;
-		matches = widget_id.match(/^(.+?)(?:-(\d+)?)$/);
+	self.widget_id_to_setting_id = function ( widgetId ) {
+		var settingId, matches;
+		matches = widgetId.match(/^(.+?)(?:-(\d+)?)$/);
 		if ( matches ) {
-			setting_id = 'widget_' + matches[1] + '[' + matches[2] + ']';
+			settingId = 'widget_' + matches[1] + '[' + matches[2] + ']';
 		} else {
-			setting_id = 'widget_' + widget_id;
+			settingId = 'widget_' + widgetId;
 		}
-		return setting_id;
+		return settingId;
 	};
 
 	/**
-	 * @param {String} widget_id
+	 * @param {String} widgetId
 	 * @returns {String}
 	 */
-	self.widget_id_to_base = function ( widget_id ) {
-		return widget_id.replace( /-\d+$/, '' );
+	self.widget_id_to_base = function ( widgetId ) {
+		return widgetId.replace( /-\d+$/, '' );
 	};
 
 	/**
-	 * @param {String} sidebar_id
+	 * @param {String} sidebarId
 	 * @returns {string}
 	 */
-	self.sidebar_id_to_setting_id = function ( sidebar_id ) {
-		return 'sidebars_widgets[' + sidebar_id + ']';
+	self.sidebar_id_to_setting_id = function ( sidebarId ) {
+		return 'sidebars_widgets[' + sidebarId + ']';
 	};
 
 	$( function () {
