@@ -1,21 +1,44 @@
 /*global jQuery, _wpCustomizePartialRefreshWidgets_exports, _ */
 wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	'use strict';
+	var self, oldWidgetsInit;
 
-	var self = {
+	self = {
 		sidebars_eligible_for_post_message: [],
 		widgets_eligible_for_post_message: [],
 		render_widget_query_var: null,
 		render_widget_nonce_value: null,
 		render_widget_nonce_post_key: null,
-		preview_customize_nonce: null
+		preview_customize_nonce: null,
+		previewReady: $.Deferred()
 	};
+
+	wp.customize.bind( 'preview-ready', function () {
+		self.previewReady.resolve();
+	} );
 
 	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
 
+	// Wrap the WidgetCustomizerPreview.init so that our init is executed immediately afterward
+	oldWidgetsInit = wp.customize.WidgetCustomizerPreview.init;
+	wp.customize.WidgetCustomizerPreview.init = function () {
+		oldWidgetsInit.apply( wp.customize.WidgetCustomizerPreview, arguments );
+		self.init();
+	};
+
+	/**
+	 * Init
+	 */
 	self.init = function () {
+		var self = this;
 		self.preview = wp.customize.WidgetCustomizerPreview.preview;
-		this.livePreview();
+
+		self.previewReady.done( function () {
+			wp.customize.preview.bind( 'setting-transports', function ( transports ) {
+				$.extend( self.setting_transports, transports );
+			} );
+			self.livePreview();
+		} );
 	};
 
 	/**
@@ -287,10 +310,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	self.sidebar_id_to_setting_id = function ( sidebarId ) {
 		return 'sidebars_widgets[' + sidebarId + ']';
 	};
-
-	$( function () {
-		self.init();
-	} );
 
 	return self;
 }( jQuery ));
