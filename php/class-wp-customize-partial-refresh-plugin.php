@@ -25,6 +25,16 @@ class WP_Customize_Partial_Refresh_Plugin {
 	public $widgets;
 
 	/**
+	 * @var array
+	 */
+	public $script_handles = array();
+
+	/**
+	 * @var array
+	 */
+	public $style_handles = array();
+
+	/**
 	 * Plugin bootstrap for Partial Refresh functionality.
 	 */
 	function __construct() {
@@ -33,6 +43,8 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$this->dir_url = $plugin_location['dir_url'];
 		$this->config = array();
 
+		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
+		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
 		add_action( 'init', array( $this, 'init' ) );
 		$this->widgets = new WP_Customize_Partial_Refresh_Widgets( $this );
 	}
@@ -43,6 +55,44 @@ class WP_Customize_Partial_Refresh_Plugin {
 	function init() {
 		$this->config = apply_filters( 'customize_partial_refresh_config', $this->config, $this );
 		do_action( 'customize_partial_refresh_init', $this );
+	}
+
+	/**
+	 * @param WP_Scripts $wp_scripts
+	 * @action wp_default_scripts
+	 */
+	function register_scripts( $wp_scripts ) {
+		$handle = 'customize-partial-refresh-base';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-base.js' );
+		$deps = array( 'customize-base' );
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version() );
+		$this->script_handles['base'] = $handle;
+
+		$handle = 'customize-partial-refresh-widgets-preview';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-widgets-preview.js' );
+		$deps = array( 'jquery', 'wp-util', 'customize-preview', 'customize-preview-widgets', $this->script_handles['base'] );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+		$this->script_handles['widgets-preview'] = $handle;
+
+		$handle = 'customize-partial-refresh-widgets-pane';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-widgets-pane.js' );
+		$deps = array( 'jquery', 'wp-util', 'customize-controls', 'customize-widgets', $this->script_handles['base'] );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+		$this->script_handles['widgets-pane'] = $handle;
+	}
+
+	/**
+	 * @param WP_Styles $wp_styles
+	 * @action wp_default_styles
+	 */
+	function register_styles( $wp_styles ) {
+		$handle = 'customize-partial-refresh-widgets-preview';
+		$src = $this->get_dir_url( 'css/customize-partial-refresh-widgets-preview.css' );
+		$deps = array();
+		$wp_styles->add( $handle, $src, $deps, $this->get_version() );
+		$this->style_handles['widgets-preview'] = $handle;
 	}
 
 	/**

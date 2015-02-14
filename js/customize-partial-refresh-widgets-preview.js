@@ -4,14 +4,15 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	var self, oldWidgetsInit;
 
 	self = {
-		sidebars_eligible_for_post_message: [],
-		widgets_eligible_for_post_message: [],
-		render_widget_query_var: null,
-		render_widget_nonce_value: null,
-		render_widget_nonce_post_key: null,
-		preview_customize_nonce: null,
+		sidebarsEligibleForPostMessage: [],
+		widgetsEligibleForPostMessage: [],
+		renderWidgetQueryVar: null,
+		renderWidgetNonceValue: null,
+		renderWidgetNoncePostKey: null,
+		previewCustomizeNonce: null,
 		previewReady: $.Deferred(),
-		settingTransports: {}
+		settingTransports: {},
+		requestUri: '/'
 	};
 
 	wp.customize.bind( 'preview-ready', function () {
@@ -58,10 +59,10 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 */
 	self.sidebarCanLivePreview = function ( sidebarId ) {
 		var widgetIds, renderedWidgetIds;
-		if ( -1 === self.sidebars_eligible_for_post_message.indexOf( sidebarId ) ) {
+		if ( -1 === self.sidebarsEligibleForPostMessage.indexOf( sidebarId ) ) {
 			return false;
 		}
-		widgetIds = wp.customize( self.sidebar_id_to_setting_id( sidebarId ) )();
+		widgetIds = wp.customize( wp.customize.Widgets.sidebarIdToSettingId( sidebarId ) )();
 		renderedWidgetIds = _( widgetIds ).filter( function ( widgetId ) {
 			return 0 !== $( '#' + widgetId ).length;
 		} );
@@ -84,7 +85,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
 			var settingId, setting, sidebarTransport, widgetIds;
 
-			settingId = self.sidebar_id_to_setting_id( sidebarId );
+			settingId = wp.customize.Widgets.sidebarIdToSettingId( sidebarId );
 			setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
 			sidebarTransport = self.sidebarCanLivePreview( sidebarId ) ? 'postMessage' : 'refresh';
 			if ( 'refresh' === sidebarTransport && 'postMessage' === setting.transport ) {
@@ -95,11 +96,11 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			widgetIds = wp.customize( settingId ).get();
 			$.each( widgetIds, function ( i, widgetId ){
 				var settingId, setting, widgetTransport, idBase;
-				settingId = self.widget_id_to_setting_id( widgetId );
+				settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
 				setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
 				widgetTransport = 'refresh';
-				idBase = self.widget_id_to_base( widgetId );
-				if ( sidebarTransport === 'postMessage' && ( -1 !== self.widgets_eligible_for_post_message.indexOf( idBase ) ) ) {
+				idBase = wp.customize.Widgets.parseWidgetId( widgetId ).idBase;
+				if ( sidebarTransport === 'postMessage' && ( -1 !== self.widgetsEligibleForPostMessage.indexOf( idBase ) ) ) {
 					widgetTransport = 'postMessage';
 				}
 				if ( 'refresh' === widgetTransport && 'postMessage' === setting.transport ) {
@@ -119,7 +120,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 */
 	self.livePreview = function () {
 		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
-			var settingId = self.sidebar_id_to_setting_id( sidebarId );
+			var settingId = wp.customize.Widgets.sidebarIdToSettingId( sidebarId );
 			wp.customize( settingId, function( setting ) {
 				setting.id = settingId;
 				setting.sidebarId = sidebarId;
@@ -128,7 +129,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		} );
 
 		$.each( wp.customize.WidgetCustomizerPreview.renderedWidgets, function ( widgetId ) {
-			var settingId = self.widget_id_to_setting_id( widgetId );
+			var settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
 			wp.customize( settingId, function ( setting ) {
 				setting.id = settingId;
 				setting.widgetId = widgetId;
@@ -159,7 +160,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		$.each( newSidebarWidgetIds, function ( i, widgetId ) {
 			var settingId, setting, parentSetting;
 
-			settingId = self.widget_id_to_setting_id( widgetId );
+			settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
 			setting = wp.customize( settingId );
 			if ( ! setting ) {
 				setting = wp.customize.create( settingId, {} );
@@ -180,7 +181,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		// Remove widgets (their DOM element and their setting) when removed from sidebar
 		$.each( oldSidebarWidgetIds, function ( i, oldWidgetId ) {
 			if ( -1 === newSidebarWidgetIds.indexOf( oldWidgetId ) ) {
-				var settingId = self.widget_id_to_setting_id( oldWidgetId );
+				var settingId = wp.customize.Widgets.widgetIdToSettingId( oldWidgetId );
 				if ( wp.customize.has( settingId ) ) {
 					wp.customize.remove( settingId );
 					// @todo WARNING: If a widget is moved to another sidebar, we need to either not do this, or force a refresh when a widget is  moved to another sidebar
@@ -225,19 +226,19 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		}
 		data = {
 			widget_id: setting.widgetId,
-			nonce: self.preview_customize_nonce, // for Customize Preview
+			nonce: self.previewCustomizeNonce, // for Customize Preview
 			wp_customize: 'on'
 		};
-		data[ self.render_widget_query_var ] = '1';
+		data[ self.renderWidgetQueryVar ] = '1';
 		customized = {};
-		customized[ self.sidebar_id_to_setting_id( sidebarId ) ] = sidebarWidgets;
+		customized[ wp.customize.Widgets.sidebarIdToSettingId( sidebarId ) ] = sidebarWidgets;
 		customized[ setting.id ] = newInstance;
 		data.customized = JSON.stringify( customized );
-		data[ self.render_widget_nonce_post_key ] = self.render_widget_nonce_value;
+		data[ self.renderWidgetNoncePostKey ] = self.renderWidgetNonceValue;
 
 		$( '#' + setting.widgetId ).addClass( 'customize-partial-refreshing' );
 
-		$.post( self.request_uri, data, function ( r ) {
+		$.post( self.requestUri, data, function ( r ) {
 			if ( ! r.success ) {
 				throw new Error( r.data && r.data.message ? r.data.message : 'FAIL' );
 			}
@@ -251,7 +252,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			} else if ( ! newWidget.length && oldWidget.length ) {
 				oldWidget.remove();
 			} else if ( newWidget.length && ! oldWidget.length ) {
-				sidebarWidgets = wp.customize( self.sidebar_id_to_setting_id( r.data.sidebar_id ) )();
+				sidebarWidgets = wp.customize( wp.customize.Widgets.sidebarIdToSettingId( r.data.sidebar_id ) )();
 				position = sidebarWidgets.indexOf( setting.widgetId );
 				if ( -1 === position ) {
 					throw new Error( 'Unable to determine new widget position in sidebar' );
@@ -275,54 +276,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			parent.wp.customize.control( setting.id ).active( 0 !== newWidget.length ); // @todo Eliminate use of parent by sending messages
 			self.refreshTransports();
 		} );
-	};
-
-	/**
-	 * @param {String} widgetId
-	 * @returns {String}
-	 */
-	self.widget_id_to_setting_id = function ( widgetId ) {
-		var settingId, matches;
-		matches = widgetId.match(/^(.+?)(?:-(\d+)?)$/);
-		if ( matches ) {
-			settingId = 'widget_' + matches[1] + '[' + matches[2] + ']';
-		} else {
-			settingId = 'widget_' + widgetId;
-		}
-		return settingId;
-	};
-
-	/**
-	 * @param {String} widgetId
-	 * @returns {String}
-	 */
-	self.widget_id_to_base = function ( widgetId ) {
-		return widgetId.replace( /-\d+$/, '' );
-	};
-
-	/**
-	 * @param {String} sidebarId
-	 * @returns {string}
-	 */
-	self.sidebar_id_to_setting_id = function ( sidebarId ) {
-		return 'sidebars_widgets[' + sidebarId + ']';
-	};
-
-	/**
-	 * @param {String} settingId
-	 * @returns {String|null} widgetId
-	 */
-	self.settingIdToWidgetId = function ( settingId ) {
-		var widgetId, matches;
-		matches = settingId.match( /^widget_(.+?)(?:\[(\d+)\])/ );
-		if ( ! matches ) {
-			return null;
-		}
-		widgetId = matches[1];
-		if ( matches[2] ) {
-			widgetId += '-' + matches[2];
-		}
-		return widgetId;
 	};
 
 	return self;

@@ -57,7 +57,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			return;
 		}
 		add_filter( 'widget_customizer_setting_args', array( $this, 'filter_widget_customizer_setting_args' ), 10, 2 );
-		add_action( 'customize_controls_init', array( $this, 'customize_controls_init' ) );
+		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 	}
 
@@ -198,25 +198,21 @@ class WP_Customize_Partial_Refresh_Widgets {
 	/**
 	 * Add scripts for customizing the Customizer pane
 	 */
-	function customize_controls_init() {
+	function customize_controls_enqueue_scripts() {
 		/**
 		 * @var WP_Scripts $wp_scripts
 		 */
 		global $wp_scripts;
 
-		$script_handle = 'customize-partial-refresh-widgets-pane';
-		$src = $this->plugin->get_dir_url( 'js/customize-partial-refresh-widgets-pane.js' );
-		$deps = array( 'jquery', 'wp-util', 'customize-controls' );
-		$in_footer = true;
-		wp_enqueue_script( $script_handle, $src, $deps, $this->plugin->get_version(), $in_footer );
+		wp_enqueue_script( $this->plugin->script_handles['widgets-pane'] );
 
 		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings
 		$exports = array(
-			'sidebars_eligible_for_post_message' => $this->get_sidebars_supporting_partial_refresh(),
-			'widgets_eligible_for_post_message' => $this->get_widgets_supporting_partial_refresh(),
+			'sidebarsEligibleForPostMessage' => $this->get_sidebars_supporting_partial_refresh(),
+			'widgetsEligibleForPostMessage' => $this->get_widgets_supporting_partial_refresh(),
 		);
 		$wp_scripts->add_data(
-			$script_handle,
+			$this->plugin->script_handles['widgets-pane'],
 			'data',
 			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
 		);
@@ -230,18 +226,10 @@ class WP_Customize_Partial_Refresh_Widgets {
 		 * @var WP_Customize_Manager $wp_customize
 		 * @var WP_Scripts $wp_scripts
 		 */
-		global $wp_registered_sidebars, $wp_customize, $wp_scripts;
+		global $wp_customize, $wp_scripts;
 
-		$script_handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->plugin->get_dir_url( 'js/customize-partial-refresh-widgets-preview.js' );
-		$deps = array( 'jquery', 'wp-util', 'customize-preview' );
-		$in_footer = true;
-		wp_enqueue_script( $script_handle, $src, $deps, $this->plugin->get_version(), $in_footer );
-
-		$style_handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->plugin->get_dir_url( 'css/customize-partial-refresh-widgets-preview.css' );
-		$deps = array();
-		wp_enqueue_style( $style_handle, $src, $deps, $this->plugin->get_version() );
+		wp_enqueue_script( $this->plugin->script_handles['widgets-preview'] );
+		wp_enqueue_style( $this->plugin->style_handles['widgets-preview'] );
 
 		// Enqueue any scripts provided to add live preview support for builtin themes (e.g. twentythirteen)
 		$applied_themes = array( get_template() );
@@ -260,19 +248,18 @@ class WP_Customize_Partial_Refresh_Widgets {
 
 		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings
 		$exports = array(
-			'registered_sidebars' => $wp_registered_sidebars,
-			'render_widget_query_var' => self::RENDER_WIDGET_QUERY_VAR,
-			'render_widget_nonce_value' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
-			'render_widget_nonce_post_key' => self::RENDER_WIDGET_NONCE_POST_KEY,
-			'request_uri' => ! empty( $_SERVER['REQUEST_URI'] ) ? wp_unslash( esc_url_raw( $_SERVER['REQUEST_URI'] ) ) : '/',
-			'sidebars_eligible_for_post_message' => $this->get_sidebars_supporting_partial_refresh(),
-			'widgets_eligible_for_post_message' => $this->get_widgets_supporting_partial_refresh(),
-			'preview_customize_nonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
+			'renderWidgetQueryVar' => self::RENDER_WIDGET_QUERY_VAR,
+			'renderWidgetNonceValue' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
+			'renderWidgetNoncePostKey' => self::RENDER_WIDGET_NONCE_POST_KEY,
+			'requestUri' => ! empty( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '/',
+			'sidebarsEligibleForPostMessage' => $this->get_sidebars_supporting_partial_refresh(),
+			'widgetsEligibleForPostMessage' => $this->get_widgets_supporting_partial_refresh(),
+			'previewCustomizeNonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
 		);
 		$wp_scripts->add_data(
-			$script_handle,
+			$this->plugin->script_handles['widgets-preview'],
 			'data',
-			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
+			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', wp_json_encode( $exports ) )
 		);
 	}
 
