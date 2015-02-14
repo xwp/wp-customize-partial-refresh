@@ -316,12 +316,11 @@ class WP_Customize_Partial_Refresh_Widgets {
 			$widget = $wp_registered_widgets[ $widget_id ];
 
 			$rendered_widget = null;
-			$sidebar_id = is_active_widget( $widget['callback'], $widget['id'], false, false );
+			$id_base = false;
+			$skip_inactive = true;
+			$sidebar_id = is_active_widget( $widget['callback'], $widget['id'], $id_base, $skip_inactive );
 			if ( empty( $sidebar_id ) ) {
 				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render inactive widget.', 'customize-partial-preview-refresh' ), $widget['id'] ) );
-			}
-			if ( 'wp_inactive_widgets' === $sidebar_id ) {
-				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render widget %s on the wp_inactive_widgets sidebar', 'customize-partial-preview-refresh' ), $widget['id'] ) );
 			}
 
 			$sidebar = $wp_registered_sidebars[ $sidebar_id ];
