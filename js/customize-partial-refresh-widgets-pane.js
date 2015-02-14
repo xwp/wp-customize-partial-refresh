@@ -11,27 +11,27 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
 
 	self.init = function () {
+		api.bind( 'add', self.setDefaultWidgetTransport );
+	};
 
-		api.bind( 'add', function ( setting ) {
-			var matches, id_base;
-			matches = setting.id.match( /^widget_(.+?)\[(\d+)\]$/ );
-			if ( ! matches ) {
-				return;
-			}
-			id_base = matches[1];
-			if ( -1 !== self.widgetsEligibleForPostMessage.indexOf( id_base ) ) {
-				setting.transport = 'postMessage';
-			}
-		} );
+	/**
+	 * When a new widget setting is added, set the proper default transport.
+	 *
+	 * @this {wp.customize.Values}
+	 * @param {wp.customize.Setting} setting
+	 */
+	self.setDefaultWidgetTransport = function ( setting ) {
+		var parsed = wp.customize.Widgets.parseWidgetSettingId( setting.id );
+		if ( parsed && -1 !== _.indexOf( self.widgetsEligibleForPostMessage, parsed.idBase ) ) {
+			setting.transport = 'postMessage';
+		}
 	};
 
 	api.bind( 'ready', function () {
 		self.ready.resolve();
 	} );
 
-	self.ready.done( function () {
-		self.init();
-	} );
+	self.init();
 
 	return self;
 }( jQuery, wp.customize ));

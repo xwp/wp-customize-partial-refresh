@@ -26,7 +26,33 @@ wp.customize.Widgets.parseWidgetId = function ( widgetId ) {
 	return parsed;
 };
 
+
 /**
+ * Parse setting ID like widget_text[123] into its idBase (text) and number (123).
+ *
+ * @param {String} settingId
+ * @returns {Object}
+ */
+wp.customize.Widgets.parseWidgetSettingId = function ( settingId ) {
+	var matches, parsed = {
+		number: 0,
+		idBase: ''
+	};
+
+	matches = settingId.match( /^widget_(.+?)(?:\[(\d+)\])?$/ );
+	if ( ! matches ) {
+		return null;
+	}
+	parsed.idBase = matches[1];
+	if ( matches[2] ) {
+		parsed.number = parseInt( matches[2], 10 );
+	}
+	return parsed;
+};
+
+/**
+ * Parse a widget ID like text-123 into its idBase (text) and number (123)
+ *
  * @param {String} widgetId
  * @returns {String} settingId
  */
