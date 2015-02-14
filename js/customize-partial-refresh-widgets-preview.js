@@ -36,6 +36,9 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		self.preview = wp.customize.WidgetCustomizerPreview.preview;
 
 		self.previewReady.done( function () {
+			wp.customize.preview.bind( 'active', function () {
+				self.requestSettingTransports();
+			} );
 			wp.customize.preview.bind( 'setting-transports', function ( transports ) {
 				$.extend( self.settingTransports, transports );
 			} );
@@ -46,11 +49,9 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	/**
 	 * Send message to pane requesting all setting transports.
 	 */
-	self.updateSettingTransports = function () {
+	self.requestSettingTransports = function () {
 		wp.customize.preview.send( 'request-setting-transports' );
 	};
-
-
 
 	/**
 	 * if the containing sidebar is eligible, and if there are sibling widgets the sidebar currently rendered
