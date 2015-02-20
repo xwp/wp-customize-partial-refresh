@@ -11,7 +11,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		renderWidgetNoncePostKey: null,
 		previewCustomizeNonce: null,
 		previewReady: $.Deferred(),
-		settingTransports: {},
 		requestUri: '/'
 	};
 
@@ -28,8 +27,25 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		self.init();
 	};
 
+	self.SettingTransportProxy = wp.customize.Value.extend({
+		initialize: function( id, transport, options ) {
+			wp.customize.Value.prototype.initialize.call( this, transport, options );
+			this.id = id;
+
+			// Sync the new transport to the parent
+			this.bind( 'change', function ( newTransport ) {
+				wp.customize.preview.send( 'update-setting', {
+					id: this.id,
+					transport: newTransport
+				} );
+			} );
+		}
+	});
+
+	self.settingTransports = new wp.customize.Values({ defaultConstructor: self.SettingTransportProxy });
+
 	/**
-	 * Init
+	 * Bootstrap functionality.
 	 */
 	self.init = function () {
 		var self = this;
@@ -40,7 +56,14 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 				self.requestSettingTransports();
 			} );
 			wp.customize.preview.bind( 'setting-transports', function ( transports ) {
-				$.extend( self.settingTransports, transports );
+				$.each( transports, function ( settingId, transport ) {
+					if ( ! self.settingTransports.has( settingId ) ) {
+						self.settingTransports.create( settingId, settingId, transport );
+					} else {
+						self.settingTransports( settingId ).set( transport );
+					}
+				} );
+				self.settingTransports.trigger( 'updated' );
 			} );
 
 			// Currently customize-preview.js is not creating settings for dynamically-created settings in the pane; so we have to do it
@@ -60,9 +83,21 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 	/**
 	 * Send message to pane requesting all setting transports.
+	 *
+	 * Returned promise is resolved once the parent window sends back the message.
+	 *
+	 * @returns {jQuery.Deferred}
 	 */
 	self.requestSettingTransports = function () {
+		var promise, once;
+		promise = $.Deferred();
+		once = function () {
+			self.settingTransports.unbind( 'updated', once );
+			promise.resolveWith( self.settingTransports );
+		};
+		self.settingTransports.bind( 'updated', once );
 		wp.customize.preview.send( 'request-setting-transports' );
+		return promise;
 	};
 
 	/**
@@ -87,45 +122,48 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 * preview tell us, so this updates the parent's transports to
 	 * postMessage when it is available. If there is a switch from
 	 * postMessage to refresh, the preview window will request a refresh.
+	 *
+	 * @returns {jQuery.Deferred}
 	 */
 	self.refreshTransports = function () {
+		var promise;
 
+		promise = self.requestSettingTransports();
 
-		// Step 1: request all transports from pane
-		// @todo self.getSettingTransports( setting.id, widgetTransport );
+		promise.done( function () {
+			var settingTransports = this, changedToRefresh = false;
+			$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
+				var settingId, sidebarTransport, widgetIds;
 
-		var changedToRefresh = false;
-		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
-			var settingId, setting, sidebarTransport, widgetIds;
-
-			settingId = wp.customize.Widgets.sidebarIdToSettingId( sidebarId );
-			setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
-			sidebarTransport = self.sidebarCanLivePreview( sidebarId ) ? 'postMessage' : 'refresh';
-			if ( 'refresh' === sidebarTransport && 'postMessage' === setting.transport ) {
-				changedToRefresh = true;
-			}
-			setting.transport = sidebarTransport;
-
-			widgetIds = wp.customize( settingId ).get();
-			$.each( widgetIds, function ( i, widgetId ){
-				var settingId, setting, widgetTransport, idBase;
-				settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
-				setting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
-				widgetTransport = 'refresh';
-				idBase = wp.customize.Widgets.parseWidgetId( widgetId ).idBase;
-				if ( sidebarTransport === 'postMessage' && ( -1 !== self.widgetsEligibleForPostMessage.indexOf( idBase ) ) ) {
-					widgetTransport = 'postMessage';
-				}
-				if ( 'refresh' === widgetTransport && 'postMessage' === setting.transport ) {
+				settingId = wp.customize.Widgets.sidebarIdToSettingId( sidebarId );
+				sidebarTransport = self.sidebarCanLivePreview( sidebarId ) ? 'postMessage' : 'refresh';
+				if ( 'refresh' === sidebarTransport && 'postMessage' === settingTransports( settingId ).get() ) {
 					changedToRefresh = true;
 				}
-				// @todo self.setSettingTransport( setting.id, widgetTransport );
-				setting.transport = widgetTransport;
+				settingTransports( settingId ).set( sidebarTransport );
+
+				widgetIds = wp.customize( settingId ).get();
+				$.each( widgetIds, function ( i, widgetId ){
+					var settingId, widgetTransport, idBase;
+					settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
+
+					widgetTransport = 'refresh';
+					idBase = wp.customize.Widgets.parseWidgetId( widgetId ).idBase;
+					if ( sidebarTransport === 'postMessage' && ( -1 !== _.indexOf( self.widgetsEligibleForPostMessage, idBase ) ) ) {
+						widgetTransport = 'postMessage';
+					}
+					if ( 'refresh' === widgetTransport && 'postMessage' === settingTransports( settingId ).get() ) {
+						changedToRefresh = true;
+					}
+					settingTransports( settingId ).set( widgetTransport );
+				} );
 			} );
+			if ( changedToRefresh ) {
+				self.preview.send( 'refresh' );
+			}
 		} );
-		if ( changedToRefresh ) {
-			self.preview.send( 'refresh' );
-		}
+
+		return promise;
 	};
 
 	/**
@@ -220,8 +258,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 * @returns {boolean} true if the widget is indeed to be inserted
 	 */
 	self.handleWidgetInsert = function ( widgetSetting ) {
-		var parentSetting;
-
 		if ( ! widgetSetting.widgetId ) {
 			throw new Error( 'Attempted to call on a non-widget setting.' );
 		}
@@ -234,13 +270,14 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		wp.customize.WidgetCustomizerPreview.renderedWidgets[ widgetSetting.widgetId ] = true;
 		widgetSetting.bind( self.onChangeWidgetSetting ); // ideally core would have jQuery.Callbacks have the unique flag set
 
-		self.refreshTransports();
-		parentSetting = parent.wp.customize( widgetSetting.id ); // @todo Eliminate use of parent by sending messages
-		if ( 'postMessage' === parentSetting.transport ) {
-			self.onChangeWidgetSetting.call( widgetSetting, widgetSetting.get(), null );
-		} else {
-			self.preview.send( 'refresh' );
-		}
+		self.requestSettingTransports().done( function () {
+			var settingTransports = this;
+			if ( 'postMessage' === settingTransports( widgetSetting.id ).get() ) {
+				self.onChangeWidgetSetting.call( widgetSetting, widgetSetting.get(), null );
+			} else {
+				self.preview.send( 'refresh' );
+			}
+		} );
 		return true;
 	};
 
@@ -322,8 +359,11 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			wp.customize.trigger( 'sidebar-updated', sidebarId );
 			wp.customize.trigger( 'widget-updated', setting.widgetId );
 
-			parent.wp.customize.control( setting.id ).active( 0 !== newWidget.length ); // @todo Eliminate use of parent by sending messages
 			self.refreshTransports();
+			wp.customize.preview.send( 'update-control', {
+				id: setting.id, // the setting ID and the control ID are the same
+				active: 0 !== newWidget.length
+			} );
 		} );
 	};
 
