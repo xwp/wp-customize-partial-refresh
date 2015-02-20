@@ -251,11 +251,14 @@ class WP_Customize_Partial_Refresh_Widgets {
 			'renderWidgetQueryVar' => self::RENDER_WIDGET_QUERY_VAR,
 			'renderWidgetNonceValue' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
 			'renderWidgetNoncePostKey' => self::RENDER_WIDGET_NONCE_POST_KEY,
-			'requestUri' => ! empty( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '/',
+			'requestUri' => '/',
 			'sidebarsEligibleForPostMessage' => $this->get_sidebars_supporting_partial_refresh(),
 			'widgetsEligibleForPostMessage' => $this->get_widgets_supporting_partial_refresh(),
 			'previewCustomizeNonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
 		);
+		if ( ! empty( $_SERVER['REQUEST_URI'] ) ) {
+			$exports['requestUri'] = esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
+		}
 		$wp_scripts->add_data(
 			$this->plugin->script_handles['widgets-preview'],
 			'data',

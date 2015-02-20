@@ -276,8 +276,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 				if ( position > 0 ) {
 					beforeWidget = $( '#' + sidebarWidgets[ position - 1 ] );
 					beforeWidget.after( newWidget );
-				}
-				else {
+				} else {
 					afterWidget = $( '#' + sidebarWidgets[ position + 1 ] );
 					afterWidget.before( newWidget );
 				}
