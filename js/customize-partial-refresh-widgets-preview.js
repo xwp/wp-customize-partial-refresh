@@ -129,7 +129,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	};
 
 	/**
-	 *
+	 * Set up widget and sidebar settings to be live-previewed if eligible.
 	 */
 	self.livePreview = function () {
 		$.each( _.keys( wp.customize.WidgetCustomizerPreview.renderedSidebars ), function ( i, sidebarId ) {
@@ -155,6 +155,8 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	};
 
 	/**
+	 * Callback for a change to a sidebars_widgets[x] setting.
+	 *
 	 * @this {wp.customize.Setting}
 	 * @param {array} newSidebarWidgetIds
 	 * @param {array} oldSidebarWidgetIds
@@ -167,40 +169,42 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		$.each( newSidebarWidgetIds, function ( i, widgetId ) {
 			var widget = $( '#' + widgetId );
 			widget.parent().append( widget );
+			// @todo widget.trigger( 'customize-widget-sorted' ) so that a widget can re-initialize any dynamic iframe content
 		} );
 
-		// Create settings for newly-created widgets
+		// Trigger insertions for newly-added widgets
 		$.each( newSidebarWidgetIds, function ( i, widgetId ) {
-			var settingId, setting, parentSetting;
+			var widgetSettingId;
 
-			settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
-			setting = wp.customize( settingId );
-			if ( ! setting ) {
-				setting = wp.customize.create( settingId, {} );
+			// Skip a widget that was previously rendered
+			if ( wp.customize.WidgetCustomizerPreview.renderedWidgets[ widgetId ] ) {
+				return;
 			}
 
-			// Force the callback to fire if this widget is newly-added
-			if ( oldSidebarWidgetIds.indexOf( widgetId ) === -1 ) {
-				self.refreshTransports();
-				parentSetting = parent.wp.customize( settingId ); // @todo Eliminate use of parent by sending messages
-				if ( 'postMessage' === parentSetting.transport ) {
-					setting.callbacks.fireWith( setting, [ setting(), null ] );
-				} else {
-					self.preview.send( 'refresh' );
-				}
-			}
+			widgetSettingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
+			wp.customize( widgetSettingId, function ( widgetSetting ) {
+				widgetSetting.id = widgetSettingId; // @todo this should be be in core
+				widgetSetting.widgetId = widgetId;
+				self.handleWidgetInsert( widgetSetting );
+			} );
 		} );
 
 		// Remove widgets (their DOM element and their setting) when removed from sidebar
 		$.each( oldSidebarWidgetIds, function ( i, oldWidgetId ) {
-			if ( -1 === newSidebarWidgetIds.indexOf( oldWidgetId ) ) {
-				var settingId = wp.customize.Widgets.widgetIdToSettingId( oldWidgetId );
-				if ( wp.customize.has( settingId ) ) {
-					wp.customize.remove( settingId );
-					// @todo WARNING: If a widget is moved to another sidebar, we need to either not do this, or force a refresh when a widget is  moved to another sidebar
-				}
-				$( '#' + oldWidgetId ).remove();
+			var settingId, setting;
+			// Abort if the old widget still exists in the new sidebar
+			if ( -1 !== _.indexOf( newSidebarWidgetIds, oldWidgetId ) ) {
+				return;
 			}
+			delete wp.customize.WidgetCustomizerPreview.renderedWidgets[ oldWidgetId ];
+			settingId = wp.customize.Widgets.widgetIdToSettingId( oldWidgetId );
+			setting = wp.customize( settingId );
+			if ( setting ) {
+				setting.unbind( self.onChangeWidgetSetting );
+				wp.customize.remove( settingId );
+				// @todo WARNING: If a widget is moved to another sidebar, we need to either not do this, or force a refresh when a widget is  moved to another sidebar
+			}
+			$( '#' + oldWidgetId ).remove();
 		} );
 
 		// If a widget was removed so that no widgets remain rendered in sidebar, we need to disable postMessage
@@ -209,6 +213,39 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	};
 
 	/**
+	 * Handle inserting a widget setting into the document.
+	 *
+	 * @param {wp.customize.Setting} widgetSetting
+	 * @param {string} widgetSetting.widgetId
+	 * @returns {boolean} true if the widget is indeed to be inserted
+	 */
+	self.handleWidgetInsert = function ( widgetSetting ) {
+		var parentSetting;
+
+		if ( ! widgetSetting.widgetId ) {
+			throw new Error( 'Attempted to call on a non-widget setting.' );
+		}
+
+		// Skip widget if it is already rendered
+		if ( wp.customize.WidgetCustomizerPreview.renderedWidgets[ widgetSetting.widgetId ] ) {
+			return false;
+		}
+
+		wp.customize.WidgetCustomizerPreview.renderedWidgets[ widgetSetting.widgetId ] = true;
+		widgetSetting.bind( self.onChangeWidgetSetting ); // ideally core would have jQuery.Callbacks have the unique flag set
+
+		self.refreshTransports();
+		parentSetting = parent.wp.customize( widgetSetting.id ); // @todo Eliminate use of parent by sending messages
+		if ( 'postMessage' === parentSetting.transport ) {
+			self.onChangeWidgetSetting.call( widgetSetting, widgetSetting.get(), null );
+		} else {
+			self.preview.send( 'refresh' );
+		}
+		return true;
+	};
+
+	/**
+	 * Callback for change to a widget_x[y] setting.
 	 *
 	 * @this {wp.customize.Setting}
 	 * @param newInstance
