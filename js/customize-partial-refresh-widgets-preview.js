@@ -42,6 +42,18 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			wp.customize.preview.bind( 'setting-transports', function ( transports ) {
 				$.extend( self.settingTransports, transports );
 			} );
+
+			// Currently customize-preview.js is not creating settings for dynamically-created settings in the pane; so we have to do it
+			wp.customize.preview.bind( 'setting', function( args ) {
+				var id, value;
+				args = args.slice();
+				id = args.shift();
+				value = args.shift();
+				if ( ! wp.customize.has( id ) ) {
+					wp.customize.create( id, value ); // @todo This should be in core
+				}
+			});
+
 			self.livePreview();
 		} );
 	};
