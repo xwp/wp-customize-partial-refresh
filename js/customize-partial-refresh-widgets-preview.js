@@ -42,7 +42,23 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		}
 	});
 
-	self.settingTransports = new wp.customize.Values({ defaultConstructor: self.SettingTransportProxy });
+	self.settingTransports = new wp.customize.Values({
+		defaultConstructor: self.SettingTransportProxy,
+		get: function ( id ) {
+			if ( this.has( id ) ) {
+				return this( id ).get();
+			} else {
+				return null;
+			}
+		},
+		set: function ( id, value ) {
+			if ( ! this.has( id ) ) {
+				return this.create( id, id, value );
+			} else {
+				return this( id ).set( value );
+			}
+		}
+	});
 
 	/**
 	 * Bootstrap functionality.
@@ -57,11 +73,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			} );
 			wp.customize.preview.bind( 'setting-transports', function ( transports ) {
 				$.each( transports, function ( settingId, transport ) {
-					if ( ! self.settingTransports.has( settingId ) ) {
-						self.settingTransports.create( settingId, settingId, transport );
-					} else {
-						self.settingTransports( settingId ).set( transport );
-					}
+					self.settingTransports.set( settingId, transport );
 				} );
 				self.settingTransports.trigger( 'updated' );
 			} );
@@ -137,10 +149,10 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 				settingId = wp.customize.Widgets.sidebarIdToSettingId( sidebarId );
 				sidebarTransport = self.sidebarCanLivePreview( sidebarId ) ? 'postMessage' : 'refresh';
-				if ( 'refresh' === sidebarTransport && 'postMessage' === settingTransports( settingId ).get() ) {
+				if ( 'refresh' === sidebarTransport && 'postMessage' === settingTransports.get( settingId ) ) {
 					changedToRefresh = true;
 				}
-				settingTransports( settingId ).set( sidebarTransport );
+				settingTransports.set( settingId, sidebarTransport );
 
 				widgetIds = wp.customize( settingId ).get();
 				$.each( widgetIds, function ( i, widgetId ){
@@ -152,10 +164,10 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 					if ( sidebarTransport === 'postMessage' && ( -1 !== _.indexOf( self.widgetsEligibleForPostMessage, idBase ) ) ) {
 						widgetTransport = 'postMessage';
 					}
-					if ( 'refresh' === widgetTransport && 'postMessage' === settingTransports( settingId ).get() ) {
+					if ( 'refresh' === widgetTransport && 'postMessage' === settingTransports.get( settingId ) ) {
 						changedToRefresh = true;
 					}
-					settingTransports( settingId ).set( widgetTransport );
+					settingTransports.set( settingId, widgetTransport );
 				} );
 			} );
 			if ( changedToRefresh ) {
@@ -295,7 +307,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			throw new Error( 'The setting ' + setting.id + ' does not look like a widget instance setting.' );
 		}
 
-		//if ( self.settingTransports[ setting.id ] !== 'postMessage' ) {
+		//if ( self.settingTransports.get( setting.id ) !== 'postMessage' ) {
 		//	return;
 		//}
 
