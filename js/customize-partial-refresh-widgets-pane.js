@@ -18,6 +18,7 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 		api.previewer.bind( 'request-setting-transports', self.sendSettingTransports );
 		api.previewer.bind( 'update-setting', self.updateSetting );
 		api.previewer.bind( 'update-control', self.updateControl );
+		api.previewer.bind( 'refresh', self.refreshPreview );
 	} );
 
 	/**
@@ -85,6 +86,13 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 		wp.customize.control( params.id, function ( control ) {
 			self._updateInstance( control, params );
 		} );
+	};
+
+	/**
+	 * Refresh the preview.
+	 */
+	self.refreshPreview = function () {
+		wp.customize.previewer.refresh();
 	};
 
 	/**

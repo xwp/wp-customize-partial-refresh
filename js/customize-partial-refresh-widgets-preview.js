@@ -219,6 +219,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		$.each( newSidebarWidgetIds, function ( i, widgetId ) {
 			var widget = $( '#' + widgetId );
 			widget.parent().append( widget );
+			// @todo if a widget does not support partial-refresh, then this should technically trigger a refresh
 			// @todo widget.trigger( 'customize-widget-sorted' ) so that a widget can re-initialize any dynamic iframe content
 		} );
 
@@ -341,7 +342,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			if ( ! r.success ) {
 				throw new Error( r.data && r.data.message ? r.data.message : 'FAIL' );
 			}
-			var oldWidget, newWidget, sidebarWidgets, position, beforeWidget, afterWidget;
+			var oldWidget, newWidget, sidebarWidgets, position, beforeWidget, afterWidget, placementFailed = false;
 
 			// @todo Fire jQuery event to indicate that a widget was updated; here widgets can re-initialize them if they support live widgets
 			oldWidget = $( '#' + setting.widgetId );
@@ -359,23 +360,35 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 				if ( sidebarWidgets.length === 1 ) {
 					throw new Error( 'Unexpected postMessage for adding first widget to sidebar; refresh must be used instead.' );
 				}
+
 				if ( position > 0 ) {
 					beforeWidget = $( '#' + sidebarWidgets[ position - 1 ] );
-					beforeWidget.after( newWidget );
-				} else {
+				}
+				if ( position <= 0 ) {
 					afterWidget = $( '#' + sidebarWidgets[ position + 1 ] );
+				}
+
+				if ( beforeWidget && beforeWidget.length ) {
+					beforeWidget.after( newWidget );
+				} else if ( afterWidget && afterWidget.length ) {
 					afterWidget.before( newWidget );
+				} else {
+					placementFailed = true;
 				}
 			}
 			self.preview.send( 'widget-updated', setting.widgetId );
 			wp.customize.trigger( 'sidebar-updated', sidebarId );
 			wp.customize.trigger( 'widget-updated', setting.widgetId );
 
-			self.refreshTransports();
-			wp.customize.preview.send( 'update-control', {
-				id: setting.id, // the setting ID and the control ID are the same
-				active: 0 !== newWidget.length
-			} );
+			if ( placementFailed ) {
+				self.preview.send( 'refresh' );
+			} else {
+				self.refreshTransports();
+				wp.customize.preview.send( 'update-control', {
+					id: setting.id, // the setting ID and the control ID are the same
+					active: 0 !== newWidget.length
+				} );
+			}
 		} );
 	};
 
