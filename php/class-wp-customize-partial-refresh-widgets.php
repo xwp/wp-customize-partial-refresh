@@ -254,6 +254,10 @@ class WP_Customize_Partial_Refresh_Widgets {
 			'requestUri' => '/',
 			'sidebarsEligibleForPostMessage' => $this->get_sidebars_supporting_partial_refresh(),
 			'widgetsEligibleForPostMessage' => $this->get_widgets_supporting_partial_refresh(),
+			'theme' => array(
+				'stylesheet' => $wp_customize->get_stylesheet(),
+				'active'     => $wp_customize->is_theme_active(),
+			),
 			'previewCustomizeNonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
 		);
 		if ( ! empty( $_SERVER['REQUEST_URI'] ) ) {

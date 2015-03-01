@@ -11,7 +11,11 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		renderWidgetNoncePostKey: null,
 		previewCustomizeNonce: null,
 		previewReady: $.Deferred(),
-		requestUri: '/'
+		requestUri: '/',
+		theme: {
+			active: false,
+			stylesheet: ''
+		}
 	};
 
 	wp.customize.bind( 'preview-ready', function () {
@@ -329,6 +333,9 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			nonce: self.previewCustomizeNonce, // for Customize Preview
 			wp_customize: 'on'
 		};
+		if ( ! self.theme.active ) {
+			data.theme = self.theme.stylesheet;
+		}
 		data[ self.renderWidgetQueryVar ] = '1';
 		customized = {};
 		customized[ wp.customize.Widgets.sidebarIdToSettingId( sidebarId ) ] = sidebarWidgets;
