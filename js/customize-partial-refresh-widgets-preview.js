@@ -1,4 +1,4 @@
-/*global jQuery, _wpCustomizePartialRefreshWidgets_exports, _ */
+/*global jQuery, JSON, _wpCustomizePartialRefreshWidgets_exports, _ */
 wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	'use strict';
 	var self, oldWidgetsInit;
