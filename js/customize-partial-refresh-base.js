@@ -76,3 +76,19 @@ wp.customize.Widgets.widgetIdToSettingId = function ( widgetId ) {
 wp.customize.Widgets.sidebarIdToSettingId = function ( sidebarId ) {
 	return 'sidebars_widgets[' + sidebarId + ']';
 };
+
+/**
+ * Workaround for Core bug where an exception is thrown seemingly when multiple
+ * messages are being sent along with a refresh message, resulting in the
+ * targetWindow being destroyed.
+ */
+(function () {
+	var oldMessengerReceive = wp.customize.Messenger.prototype.receive;
+	wp.customize.Messenger.prototype.receive = function () {
+		// @todo Core is currently aborting if ( ! this.targetWindow() ) but there are situations where this is not even a Value yet
+		if ( ! this.targetWindow ) {
+			return;
+		}
+		return oldMessengerReceive.apply( this, arguments );
+	};
+}());
