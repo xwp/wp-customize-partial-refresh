@@ -304,19 +304,20 @@ class WP_Customize_Partial_Refresh_Widgets {
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing widget_id param', 'customize-partial-preview-refresh' ) );
 			}
 			$widget_id = wp_unslash( sanitize_text_field( $_POST['widget_id'] ) ); // wpcs: input var okay; sanitize_text_field for WordPress-VIP
-			if ( ! isset( $wp_registered_widgets[ $widget_id ] ) ) {
+			if ( ! array_key_exists( $widget_id, $wp_registered_widgets ) ) {
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Unable to find registered widget', 'customize-partial-preview-refresh' ) );
 			}
+			if ( empty( $_POST['sidebar_id'] ) ) { // wpcs: input var okay
+				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing sidebar_id param', 'customize-partial-preview-refresh' ) );
+			}
+			$sidebar_id = wp_unslash( sanitize_text_field( $_POST['sidebar_id'] ) ); // wpcs: input var okay; sanitize_text_field for WordPress-VIP
+			if ( ! array_key_exists( $sidebar_id, $wp_registered_sidebars ) ) {
+				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render widget %1$s onto unknown sidebar %2$s.', 'customize-partial-preview-refresh' ), $widget_id, $sidebar_id ) );
+			}
+
 			$widget = $wp_registered_widgets[ $widget_id ];
 
 			$rendered_widget = null;
-			$id_base = false;
-			$skip_inactive = true;
-			$sidebar_id = is_active_widget( $widget['callback'], $widget['id'], $id_base, $skip_inactive );
-			if ( empty( $sidebar_id ) ) {
-				throw new WP_Customize_Partial_Refresh_Exception( sprintf( __( 'Attempted to render inactive widget.', 'customize-partial-preview-refresh' ), $widget['id'] ) );
-			}
-
 			$sidebar = $wp_registered_sidebars[ $sidebar_id ];
 			$widget_name = $widget['name'];
 			$params = array_merge(
