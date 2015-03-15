@@ -60,6 +60,13 @@ And use this to opt-in everything:
 
 == Changelog ==
 
+= 0.2 =
+ * Fix partial refresh during theme preview ([PR #9](https://github.com/xwp/wp-customize-partial-refresh/pull/9))
+ * Eliminate remaining direct calls to parent window, use `postMessage` only ([PR #8](https://github.com/xwp/wp-customize-partial-refresh/pull/8))
+ * Allow inactive widgets to be rendered if sidebar is specified ([PR #10](https://github.com/xwp/wp-customize-partial-refresh/pull/10))
+ * Add initial support for plugins to support custom sidebars
+ * Various other fixes and hardening, see [0.1...0.2](https://github.com/xwp/wp-customize-partial-refresh/compare/0.1...0.2).
+
 = 0.1 =
  * Resurrect Widget Customizer partial refreshes.
 

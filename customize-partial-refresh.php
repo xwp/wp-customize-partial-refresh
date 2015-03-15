@@ -3,14 +3,14 @@
  * Plugin Name: Customize Partial Refresh
  * Description: Refresh parts of a Customizer preview instead of reloading the entire page when a setting changed without transport=postMessage.
  * Plugin URI: https://github.com/xwp/wp-customize-partial-refresh
- * Version: 0.1
+ * Version: 0.2
  * Author: XWP, Weston Ruter
  * Author URI: https://xwp.co/
  * License: GPLv2+
  */
 
 /**
- * Copyright (c) 2014 XWP (https://xwp.co/)
+ * Copyright (c) 2015 XWP (https://xwp.co/)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 or, at
