@@ -11,6 +11,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		renderWidgetNoncePostKey: null,
 		previewCustomizeNonce: null,
 		previewReady: $.Deferred(),
+		registeredSidebars: {},
 		requestUri: '/',
 		theme: {
 			active: false,
@@ -70,6 +71,11 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	self.init = function () {
 		var self = this;
 		self.preview = wp.customize.WidgetCustomizerPreview.preview;
+
+		// Improve lookup of registered sidebars via map of sidebar ID to sidebar object
+		_.each( wp.customize.WidgetCustomizerPreview.registeredSidebars, function ( sidebar ) {
+			self.registeredSidebars[ sidebar.id ] = sidebar;
+		} );
 
 		self.previewReady.done( function () {
 			wp.customize.preview.bind( 'active', function () {
@@ -320,7 +326,11 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		sidebarWidgets = [];
 		wp.customize.each( function ( sidebarSetting, settingId ) {
 			var matches = settingId.match( /^sidebars_widgets\[(.+)\]/ );
-			if ( matches && sidebarSetting().indexOf( setting.widgetId ) !== -1 ) {
+			if ( matches && self.registeredSidebars[ matches[1] ] && sidebarSetting().indexOf( setting.widgetId ) !== -1 ) {
+				if ( sidebarId ) {
+					// WARNING: widget exists in multiple sidebars
+					return;
+				}
 				sidebarId = matches[1];
 				sidebarWidgets = sidebarSetting();
 			}
@@ -330,6 +340,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		}
 		data = {
 			widget_id: setting.widgetId,
+			sidebar_id: sidebarId,
 			nonce: self.previewCustomizeNonce, // for Customize Preview
 			wp_customize: 'on'
 		};
