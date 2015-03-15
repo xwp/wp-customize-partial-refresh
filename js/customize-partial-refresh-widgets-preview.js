@@ -311,16 +311,12 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	 * @param newInstance
 	 */
 	self.onChangeWidgetSetting = function( newInstance ) {
-		var setting, sidebarId, sidebarWidgets, data, customized;
+		var setting, sidebarId, sidebarWidgets, data, customized, event;
 
 		setting = this;
 		if ( ! setting.widgetId ) {
 			throw new Error( 'The setting ' + setting.id + ' does not look like a widget instance setting.' );
 		}
-
-		//if ( self.settingTransports.get( setting.id ) !== 'postMessage' ) {
-		//	return;
-		//}
 
 		sidebarId = null;
 		sidebarWidgets = [];
@@ -335,9 +331,6 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 				sidebarWidgets = sidebarSetting();
 			}
 		} );
-		if ( ! sidebarId ) {
-			throw new Error( 'Widget does not exist in a sidebar.' );
-		}
 		data = {
 			widget_id: setting.widgetId,
 			sidebar_id: sidebarId,
@@ -353,6 +346,14 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		customized[ setting.id ] = newInstance;
 		data.customized = JSON.stringify( customized );
 		data[ self.renderWidgetNoncePostKey ] = self.renderWidgetNonceValue;
+
+		// Allow plugins to prevent a partial refresh or to supply the data.sidebar_id
+		event = $.Event( 'widget-partial-refresh-request' );
+		$( document ).trigger( event, [ data ] );
+		if ( event.isDefaultPrevented() || ! data.sidebar_id ) {
+			self.preview.send( 'refresh' );
+			return;
+		}
 
 		$( '#' + setting.widgetId ).addClass( 'customize-partial-refreshing' );
 
