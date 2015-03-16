@@ -395,9 +395,14 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 					placementFailed = true;
 				}
 			}
-			self.preview.send( 'widget-updated', setting.widgetId );
+
+			_.each( r.data.rendered_widget_ids, function ( renderedWidgetId ) {
+				// @todo add to wp.customize.WidgetCustomizerPreview.renderedWidgets?
+				self.preview.send( 'widget-updated', renderedWidgetId );
+				wp.customize.trigger( 'widget-updated', renderedWidgetId );
+			} );
+
 			wp.customize.trigger( 'sidebar-updated', sidebarId );
-			wp.customize.trigger( 'widget-updated', setting.widgetId );
 
 			if ( placementFailed ) {
 				self.preview.send( 'refresh' );
