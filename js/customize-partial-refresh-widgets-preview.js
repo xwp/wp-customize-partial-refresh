@@ -5,7 +5,8 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 	self = {
 		sidebarsEligibleForPostMessage: [],
-		widgetsEligibleForPostMessage: [],
+		widgetsEligibleForPostMessage: [], // list of idBases
+		widgetsExcludedForPostMessage: {}, // keyed by widgetId
 		renderWidgetQueryVar: null,
 		renderWidgetNonceValue: null,
 		renderWidgetNoncePostKey: null,
@@ -166,12 +167,16 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 				widgetIds = wp.customize( settingId ).get();
 				$.each( widgetIds, function ( i, widgetId ){
-					var settingId, widgetTransport, idBase;
+					var settingId, widgetTransport, idBase, canUsePostMessage;
 					settingId = wp.customize.Widgets.widgetIdToSettingId( widgetId );
 
 					widgetTransport = 'refresh';
 					idBase = wp.customize.Widgets.parseWidgetId( widgetId ).idBase;
-					if ( sidebarTransport === 'postMessage' && ( -1 !== _.indexOf( self.widgetsEligibleForPostMessage, idBase ) ) ) {
+					canUsePostMessage = (
+						( -1 !== _.indexOf( self.widgetsEligibleForPostMessage, idBase ) ) &&
+						( ! self.widgetsExcludedForPostMessage[ widgetId ] )
+					);
+					if ( sidebarTransport === 'postMessage' && canUsePostMessage ) {
 						widgetTransport = 'postMessage';
 					}
 					if ( 'refresh' === widgetTransport && 'postMessage' === settingTransports.get( settingId ) ) {
@@ -396,8 +401,12 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 				}
 			}
 
-			_.each( r.data.rendered_widget_ids, function ( renderedWidgetId ) {
-				// @todo add to wp.customize.WidgetCustomizerPreview.renderedWidgets?
+			_.each( r.data.other_rendered_widget_ids, function ( widgetId ) {
+				// @todo we need to eventually allow nested widgets to be rendered
+				self.widgetsExcludedForPostMessage[ widgetId ] = true;
+			} );
+
+			_.each( [ setting.widgetId ].concat( r.data.other_rendered_widget_ids ), function ( renderedWidgetId ) {
 				self.preview.send( 'widget-updated', renderedWidgetId );
 				wp.customize.trigger( 'widget-updated', renderedWidgetId );
 			} );

@@ -356,9 +356,11 @@ class WP_Customize_Partial_Refresh_Widgets {
 			$params[0]['before_widget'] = sprintf( $params[0]['before_widget'], $widget_id, $class_name );
 			$params = apply_filters( 'dynamic_sidebar_params', $params );
 
-			$rendered_widget_ids = array();
-			add_action( 'dynamic_sidebar', function ( $widget ) use ( &$rendered_widget_ids ) {
-				$rendered_widget_ids[] = $widget['id'];
+			$other_rendered_widget_ids = array();
+			add_action( 'dynamic_sidebar', function ( $widget ) use ( &$other_rendered_widget_ids, $widget_id ) {
+				if ( $widget_id !== $widget['id'] ) {
+					$other_rendered_widget_ids[] = $widget['id'];
+				}
 			} );
 
 			// Render the widget
@@ -368,7 +370,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 				call_user_func_array( $callback, $params );
 			}
 			$rendered_widget = ob_get_clean();
-			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id', 'rendered_widget_ids' ) );
+			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id', 'other_rendered_widget_ids' ) );
 		}
 		catch ( Exception $e ) {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {

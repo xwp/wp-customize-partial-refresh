@@ -4,7 +4,8 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 
 	var self = {
 		sidebarsEligibleForPostMessage: [],
-		widgetsEligibleForPostMessage: [],
+		widgetsEligibleForPostMessage: [], // idBases
+		widgetsExcludedForPostMessage: {}, // keyed by widgetId
 		ready: $.Deferred()
 	};
 
@@ -102,8 +103,22 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	 * @param {wp.customize.Setting} setting
 	 */
 	self.setDefaultWidgetTransport = function ( setting ) {
-		var parsed = wp.customize.Widgets.parseWidgetSettingId( setting.id );
-		if ( parsed && -1 !== _.indexOf( self.widgetsEligibleForPostMessage, parsed.idBase ) ) {
+		var parsed, widgetId, canUsePostMessage;
+
+		parsed = wp.customize.Widgets.parseWidgetSettingId( setting.id );
+		if ( ! parsed ) {
+			return;
+		}
+		widgetId = parsed.idBase;
+		if ( parsed.number ) {
+			widgetId = '-' + parsed.number.toString();
+		}
+
+		canUsePostMessage = (
+			-1 !== _.indexOf( self.widgetsEligibleForPostMessage, parsed.idBase ) &&
+			! self.widgetsExcludedForPostMessage[ widgetId ]
+		);
+		if ( canUsePostMessage ) {
 			setting.transport = 'postMessage';
 		}
 	};
