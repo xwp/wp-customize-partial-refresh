@@ -376,7 +376,9 @@ class WP_Customize_Partial_Refresh_Widgets {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
 				$message = $e->getMessage();
 			} else {
-				error_log( sprintf( '%s in %s: %s', get_class( $e ), __FUNCTION__, $e->getMessage() ) );
+				if ( ! ( defined( '\WPCOM_IS_VIP_ENV' ) && \WPCOM_IS_VIP_ENV ) ) {
+					trigger_error( esc_html( sprintf( '%s in %s: %s', get_class( $e ), __FUNCTION__, $e->getMessage() ) ), E_USER_WARNING );
+				}
 				$message = $generic_error;
 			}
 			wp_send_json_error( compact( 'message' ) );
