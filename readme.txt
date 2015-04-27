@@ -60,6 +60,12 @@ And use this to opt-in everything:
 
 == Changelog ==
 
+= 0.3 =
+* Use trigger_error instead of error_log; do nothing on WPCOM
+* Introduce widgetsExcludedForPostMessage stop gap
+* Communicate to pane all widgets rendered, not just main one
+* See all changes: [0.2...0.3](https://github.com/xwp/wp-customize-partial-refresh/compare/0.2...0.3)
+
 = 0.2 =
 * Fix partial refresh during theme preview ([PR #9](https://github.com/xwp/wp-customize-partial-refresh/pull/9))
 * Eliminate remaining direct calls to parent window, use `postMessage` only ([PR #8](https://github.com/xwp/wp-customize-partial-refresh/pull/8))
