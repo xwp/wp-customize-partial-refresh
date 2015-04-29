@@ -376,7 +376,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
 				$message = $e->getMessage();
 			} else {
-				if ( ! ( defined( '\WPCOM_IS_VIP_ENV' ) && \WPCOM_IS_VIP_ENV ) ) {
+				if ( ! $this->plugin->is_wpcom_vip_prod() ) {
 					trigger_error( esc_html( sprintf( '%s in %s: %s', get_class( $e ), __FUNCTION__, $e->getMessage() ) ), E_USER_WARNING );
 				}
 				$message = $generic_error;

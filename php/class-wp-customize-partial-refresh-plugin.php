@@ -153,4 +153,13 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$dir_basename = basename( $plugin_dir );
 		return compact( 'dir_url', 'dir_path', 'dir_basename' );
 	}
+
+	/**
+	 * Return whether we're on WordPress.com VIP production.
+	 *
+	 * @return bool
+	 */
+	public function is_wpcom_vip_prod() {
+		return ( defined( '\WPCOM_IS_VIP_ENV' ) && \WPCOM_IS_VIP_ENV );
+	}
 }
