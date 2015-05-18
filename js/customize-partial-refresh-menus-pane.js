@@ -1,4 +1,4 @@
-/*global jQuery, JSON, _wpCustomizePartialRefreshMenusExports, _ */
+/*global jQuery, _wpCustomizePartialRefreshMenusExports */
 
 if ( ! wp.customize.partialPreviewMenus ) {
 	wp.customize.partialPreviewMenus = {};
@@ -14,11 +14,11 @@ wp.customize.partialPreviewMenus.pane = ( function ( $, api ) {
 	$.extend( self, _wpCustomizePartialRefreshMenusExports );
 
 	self.init = function () {
-
+		// @todo We can add stuff here if we need
 	};
 
 	self.ready.done( function () {
-
+		self.init();
 	} );
 
 	api.bind( 'ready', function () {
