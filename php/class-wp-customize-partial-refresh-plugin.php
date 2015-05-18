@@ -25,6 +25,11 @@ class WP_Customize_Partial_Refresh_Plugin {
 	public $widgets;
 
 	/**
+	 * @var WP_Customize_Partial_Refresh_Menus
+	 */
+	public $menus;
+
+	/**
 	 * @var array
 	 */
 	public $script_handles = array();
@@ -47,6 +52,7 @@ class WP_Customize_Partial_Refresh_Plugin {
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
 		add_action( 'init', array( $this, 'init' ) );
 		$this->widgets = new WP_Customize_Partial_Refresh_Widgets( $this );
+		$this->widgets = new WP_Customize_Partial_Refresh_Menus( $this );
 	}
 
 	/**
@@ -81,6 +87,21 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 		$this->script_handles['widgets-pane'] = $handle;
+
+		$handle = 'customize-partial-refresh-menus-pane';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-menus-pane.js' );
+		$deps = array( 'customize-controls' );
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version() );
+		$this->script_handles['menus-pane'] = $handle;
+
+		$handle = 'customize-partial-refresh-menus-preview';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-menus-preview.js' );
+		$deps = array( 'customize-preview', 'wp-util' );
+		$args = array(
+			'in_footer' => true,
+		);
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $args );
+		$this->script_handles['menus-preview'] = $handle;
 	}
 
 	/**
