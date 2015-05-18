@@ -1,4 +1,4 @@
-/*global jQuery, JSON, _wpCustomizePartialRefreshWidgets_exports, _ */
+/*global jQuery, JSON, _wpCustomizePartialRefreshWidgetsExports, _ */
 wp.customize.partialPreviewWidgets = ( function ( $ ) {
 	'use strict';
 	var self, oldWidgetsInit;
@@ -24,7 +24,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 		self.previewReady.resolve();
 	} );
 
-	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
+	$.extend( self, _wpCustomizePartialRefreshWidgetsExports );
 
 	// Wrap the WidgetCustomizerPreview.init so that our init is executed immediately afterward
 	oldWidgetsInit = wp.customize.WidgetCustomizerPreview.init;
