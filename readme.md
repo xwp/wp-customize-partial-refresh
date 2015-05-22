@@ -68,6 +68,10 @@ add_filter( 'customize_widget_partial_refreshable', '__return_true' );
 
 ## Changelog ##
 
+### 0.4 ###
+* Add integration for Menu Customizer.
+* See all changes: [0.3...0.4](https://github.com/xwp/wp-customize-partial-refresh/compare/0.3...0.4)
+
 ### 0.3 ###
 * Use trigger_error instead of error_log; do nothing on WPCOM
 * Introduce widgetsExcludedForPostMessage stop gap
