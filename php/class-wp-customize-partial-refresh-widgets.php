@@ -2,9 +2,9 @@
 
 class WP_Customize_Partial_Refresh_Widgets {
 	const THEME_SUPPORT = 'customize-partial-refresh-widgets';
-	const RENDER_AJAX_ACTION = 'customize_render_widget_partial';
-	const RENDER_NONCE_POST_KEY = 'render-sidebar-widgets-nonce';
-	const RENDER_QUERY_VAR = 'wp_customize_partial_refresh_widget_render';
+	const RENDER_WIDGET_AJAX_ACTION = 'render_widget';
+	const RENDER_WIDGET_NONCE_POST_KEY = 'render-sidebar-widgets-nonce';
+	const RENDER_WIDGET_QUERY_VAR = 'wp_customize_partial_refresh_widget_render';
 
 	/**
 	 * @var WP_Customize_Partial_Refresh_Plugin
@@ -80,7 +80,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 	 * @param string $id_base
 	 * @return bool
 	 */
-	function is_widget_partial_refreshable( $id_base ) {
+	function is_widget_partial_refreshable( $id_base) {
 		$partial_refreshable = false;
 		if ( in_array( $id_base, $this->core_widget_base_ids ) ) {
 			$partial_refreshable = true;
@@ -214,7 +214,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 		$wp_scripts->add_data(
 			$this->plugin->script_handles['widgets-pane'],
 			'data',
-			sprintf( 'var _wpCustomizePartialRefreshWidgetsExports = %s;', wp_json_encode( $exports ) )
+			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
 		);
 	}
 
@@ -229,7 +229,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 		global $wp_customize, $wp_scripts;
 
 		wp_enqueue_script( $this->plugin->script_handles['widgets-preview'] );
-		wp_enqueue_style( $this->plugin->style_handles['preview'] );
+		wp_enqueue_style( $this->plugin->style_handles['widgets-preview'] );
 
 		// Enqueue any scripts provided to add live preview support for builtin themes (e.g. twentythirteen)
 		$applied_themes = array( get_template() );
@@ -248,9 +248,9 @@ class WP_Customize_Partial_Refresh_Widgets {
 
 		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings
 		$exports = array(
-			'renderWidgetQueryVar' => self::RENDER_QUERY_VAR,
-			'renderWidgetNonceValue' => wp_create_nonce( self::RENDER_AJAX_ACTION ),
-			'renderWidgetNoncePostKey' => self::RENDER_NONCE_POST_KEY,
+			'renderWidgetQueryVar' => self::RENDER_WIDGET_QUERY_VAR,
+			'renderWidgetNonceValue' => wp_create_nonce( self::RENDER_WIDGET_AJAX_ACTION ),
+			'renderWidgetNoncePostKey' => self::RENDER_WIDGET_NONCE_POST_KEY,
 			'requestUri' => '/',
 			'sidebarsEligibleForPostMessage' => $this->get_sidebars_supporting_partial_refresh(),
 			'widgetsEligibleForPostMessage' => $this->get_widgets_supporting_partial_refresh(),
@@ -260,13 +260,13 @@ class WP_Customize_Partial_Refresh_Widgets {
 			),
 			'previewCustomizeNonce' => wp_create_nonce( 'preview-customize_' . $wp_customize->get_stylesheet() ),
 		);
-		if ( ! empty( $_SERVER['REQUEST_URI'] ) ) { // input var okay
-			$exports['requestUri'] = esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ); // input var okay; sanitization okay
+		if ( ! empty( $_SERVER['REQUEST_URI'] ) ) {
+			$exports['requestUri'] = esc_url_raw( home_url( wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
 		}
 		$wp_scripts->add_data(
 			$this->plugin->script_handles['widgets-preview'],
 			'data',
-			sprintf( 'var _wpCustomizePartialRefreshWidgetsExports = %s;', wp_json_encode( $exports ) )
+			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', wp_json_encode( $exports ) )
 		);
 	}
 
@@ -280,7 +280,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 		 */
 		global $wp_customize, $wp_registered_widgets, $wp_registered_sidebars;
 
-		if ( empty( $_POST[ self::RENDER_QUERY_VAR ] ) || empty( $wp_customize ) ) { // wpcs: input var okay
+		if ( empty( $_POST[ self::RENDER_WIDGET_QUERY_VAR ] ) || empty( $wp_customize ) ) { // wpcs: input var okay
 			return;
 		}
 
@@ -291,10 +291,10 @@ class WP_Customize_Partial_Refresh_Widgets {
 			do_action( 'load-widgets.php' );
 			do_action( 'widgets.php' );
 
-			if ( empty( $_POST[ self::RENDER_NONCE_POST_KEY ] ) ) { // wpcs: input var okay
+			if ( empty( $_POST[ self::RENDER_WIDGET_NONCE_POST_KEY ] ) ) { // wpcs: input var okay
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing nonce param', 'customize-partial-preview-refresh' ) );
 			}
-			if ( ! check_ajax_referer( self::RENDER_AJAX_ACTION, self::RENDER_NONCE_POST_KEY, false ) ) {
+			if ( ! check_ajax_referer( self::RENDER_WIDGET_AJAX_ACTION, self::RENDER_WIDGET_NONCE_POST_KEY, false ) ) {
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Nonce check failed. Reload and try again?', 'customize-partial-preview-refresh' ) );
 			}
 			if ( ! current_user_can( 'edit_theme_options' ) ) {
@@ -309,7 +309,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			}
 			$widget = $wp_registered_widgets[ $widget_id ];
 
-			if ( ! isset( $_POST['sidebar_id'] ) ) { // wpcs: input var okay
+			if ( ! array_key_exists( 'sidebar_id', $_POST ) ) { // wpcs: input var okay
 				throw new WP_Customize_Partial_Refresh_Exception( __( 'Missing sidebar_id param', 'customize-partial-preview-refresh' ) );
 			}
 			$sidebar_id = wp_unslash( sanitize_text_field( $_POST['sidebar_id'] ) ); // wpcs: input var okay; sanitize_text_field for WordPress-VIP
@@ -371,7 +371,8 @@ class WP_Customize_Partial_Refresh_Widgets {
 			}
 			$rendered_widget = ob_get_clean();
 			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id', 'other_rendered_widget_ids' ) );
-		} catch ( Exception $e ) {
+		}
+		catch ( Exception $e ) {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
 				$message = $e->getMessage();
 			} else {
