@@ -1,4 +1,4 @@
-/*global jQuery, _wpCustomizePartialRefreshWidgetsExports */
+/*global jQuery, _wpCustomizePartialRefreshWidgets_exports */
 wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 	'use strict';
 
@@ -9,7 +9,7 @@ wp.customize.partialPreviewWidgets = ( function ( $, api ) {
 		ready: $.Deferred()
 	};
 
-	$.extend( self, _wpCustomizePartialRefreshWidgetsExports );
+	$.extend( self, _wpCustomizePartialRefreshWidgets_exports );
 
 	self.init = function () {
 		api.bind( 'add', self.setDefaultWidgetTransport );
