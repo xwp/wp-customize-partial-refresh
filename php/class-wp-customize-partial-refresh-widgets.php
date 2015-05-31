@@ -371,8 +371,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 			}
 			$rendered_widget = ob_get_clean();
 			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id', 'other_rendered_widget_ids' ) );
-		}
-		catch ( Exception $e ) {
+		} catch ( Exception $e ) {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
 				$message = $e->getMessage();
 			} else {
