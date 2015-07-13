@@ -14,14 +14,16 @@ Refresh parts of a Customizer preview instead of reloading the entire page when 
 
 ## Description ##
 
+**This is a feature plugin proposed for WordPress 4.4**
+
 The WordPress Customizer is a framework for previewing any change to a site.
 By default, settings exposed in the Customizer use a `refresh` transport,
 meaning that in order for a setting change to be applied, the entire preview
-has to reload. The result is a preview that is anything but live. To remedy this
-poor user experience of a laggy preview, the Customizer allows settings to opt-in
-to using a `postMessage` transport. This relies on JavaScript to apply the changes
-live without doing any server-side communication at all: changes are applied
-instantly.
+has to reload, which has a huge performance hit. The result is a preview that
+is anything but live. To remedy this poor user experience of a laggy
+preview, the Customizer allows settings to opt-in to using a `postMessage`
+transport. This relies on JavaScript to apply the changes live without doing
+any server-side communication at all: changes are applied instantly.
 
 There is a major issue with settings using the `postMessage` transport,
 however: any logic used in PHP to render the setting in the template has to be
@@ -39,11 +41,22 @@ to the Widget Customizer plugin, and described in a [Make Core post](https://mak
 But [we decided](https://core.trac.wordpress.org/ticket/27112#comment:10) to
 [remove](https://github.com/xwp/wp-widget-customizer/compare/without-partial-previews)
 the feature in favor of having a better generalized framework for partial refreshes
-in a future release.
+in a future release. Partial preview refreshing has been added in 4.3 for changes
+to menus which can now be managed in the Customizer.
 
 This plugin first focuses on resurrecting partial preview refreshes for widgets.
 We can then explore adding partial refresh support to other object types, such
-as menus, inline styles, or arbitrary regions registered.
+as ~~menus,~~ inline styles, and especially to provide an API for developers to
+register arbitrary regions as being partial-refreshable, in part by associating
+a CSS selector with a given Customizer setting.
+
+<em>Blue sky:</em> If we can eliminate full-page refreshes, we can start to
+introduce controls inline with the preview (e.g. widget controls appearing
+with their widgets), and even eliminate the Customizer <code>iframe</code>
+altogether since the Customizer pane could then slide-in on any existing
+frontend page the user is on without having enter into a completely different
+Customizer state; when done, they can just collapse the Customizer away and
+continue on their way browsing the site.
 ### Usage ###
 To opt-in to partial preview refreshes for a theme, add:
 
