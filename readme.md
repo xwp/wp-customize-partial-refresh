@@ -6,7 +6,7 @@ Refresh parts of a Customizer preview instead of reloading the entire page when 
 **Contributors:** [xwp](https://profiles.wordpress.org/xwp), [westonruter](https://profiles.wordpress.org/westonruter)  
 **Tags:** [customizer](https://wordpress.org/plugins/tags/customizer), [customize](https://wordpress.org/plugins/tags/customize), [preview](https://wordpress.org/plugins/tags/preview)  
 **Requires at least:** 4.1  
-**Tested up to:** 4.3-alpha  
+**Tested up to:** 4.3-beta  
 **Stable tag:** trunk (master)  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
@@ -80,6 +80,9 @@ add_filter( 'customize_widget_partial_refreshable', '__return_true' );
 
 
 ## Changelog ##
+
+### 0.4.2 ###
+* Fix typo causing twentyten, twentyeleven, and twentytwelve not being enabled for widget partial refresh.
 
 ### 0.4.1 ###
 * Remove partial refresh functionality since it is now moved over to Menu Customizer directly.

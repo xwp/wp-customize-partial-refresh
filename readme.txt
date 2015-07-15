@@ -2,7 +2,7 @@
 Contributors:      xwp, westonruter
 Tags:              customizer, customize, preview
 Requires at least: 4.1
-Tested up to:      4.3-alpha
+Tested up to:      4.3-beta
 Stable tag:        trunk
 License:           GPLv2 or later
 License URI:       http://www.gnu.org/licenses/gpl-2.0.html
@@ -72,6 +72,9 @@ And use this to opt-in everything:
 <pre lang="php">add_filter( 'customize_widget_partial_refreshable', '__return_true' );</pre>
 
 == Changelog ==
+
+= 0.4.2 =
+* Fix typo causing twentyten, twentyeleven, and twentytwelve not being enabled for widget partial refresh.
 
 = 0.4.1 =
 * Remove partial refresh functionality since it is now moved over to Menu Customizer directly.
