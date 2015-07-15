@@ -35,9 +35,9 @@ class WP_Customize_Partial_Refresh_Widgets {
 	 * @var array
 	 */
 	protected $builtin_themes_needing_helper_scripts = array(
-		'tewntyten' => false,
-		'tewntyeleven' => false,
-		'tewntytwelve' => false,
+		'twentyten' => false,
+		'twentyeleven' => false,
+		'twentytwelve' => false,
 		'twentythirteen' => true,
 		'twentyfourteen' => false,
 		'twentyfifteen' => false,
