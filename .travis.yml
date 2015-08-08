@@ -5,7 +5,7 @@ language:
     - node_js
 
 php:
-    - 5.4
+    - 5.2
     - 5.5
 
 node_js:
@@ -25,6 +25,7 @@ before_script:
     - export DEV_LIB_PATH=dev-lib
     - if [ ! -e "$DEV_LIB_PATH" ] && [ -L .travis.yml ]; then export DEV_LIB_PATH=$( dirname $( readlink .travis.yml ) ); fi
     - source $DEV_LIB_PATH/travis.before_script.sh
+    - export LIMIT_TRAVIS_PR_CHECK_SCOPE=all
 
 script:
     - $DEV_LIB_PATH/travis.script.sh

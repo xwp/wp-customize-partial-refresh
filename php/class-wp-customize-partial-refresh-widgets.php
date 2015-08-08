@@ -355,13 +355,9 @@ class WP_Customize_Partial_Refresh_Widgets {
 
 			$params[0]['before_widget'] = sprintf( $params[0]['before_widget'], $widget_id, $class_name );
 			$params = apply_filters( 'dynamic_sidebar_params', $params );
-
-			$other_rendered_widget_ids = array();
-			add_action( 'dynamic_sidebar', function ( $widget ) use ( &$other_rendered_widget_ids, $widget_id ) {
-				if ( $widget_id !== $widget['id'] ) {
-					$other_rendered_widget_ids[] = $widget['id'];
-				}
-			} );
+			$this->currently_rendered_other_rendered_widget_ids = array();
+			$this->currently_rendered_widget_id = $widget_id;
+			add_action( 'dynamic_sidebar', array( $this, 'log_rendered_widget' ) );
 
 			// Render the widget
 			ob_start();
@@ -370,6 +366,8 @@ class WP_Customize_Partial_Refresh_Widgets {
 				call_user_func_array( $callback, $params );
 			}
 			$rendered_widget = ob_get_clean();
+			$other_rendered_widget_ids = $this->currently_rendered_other_rendered_widget_ids;
+
 			wp_send_json_success( compact( 'rendered_widget', 'sidebar_id', 'other_rendered_widget_ids' ) );
 		} catch ( Exception $e ) {
 			if ( $e instanceof WP_Customize_Partial_Refresh_Exception && ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
@@ -381,6 +379,36 @@ class WP_Customize_Partial_Refresh_Widgets {
 				$message = $generic_error;
 			}
 			wp_send_json_error( compact( 'message' ) );
+		}
+	}
+
+	/**
+	 * Workaround for lack closures.
+	 *
+	 * @see WP_Customize_Partial_Refresh_Widgets::log_rendered_widget()
+	 * @var array
+	 */
+	protected $currently_rendered_other_rendered_widget_ids = array();
+
+	/**
+	 * Workaround lack of closures.
+	 *
+	 * @see WP_Customize_Partial_Refresh_Widgets::log_rendered_widget()
+	 * @var string
+	 */
+	protected $currently_rendered_widget_id;
+
+	/**
+	 * The render_widget() method adds this as a hook for dynamic_sidebar.
+	 *
+	 * @see WP_Customize_Partial_Refresh_Widgets::render_widget()
+	 *
+	 * @param array $widget
+	 * @action dynamic_sidebar
+	 */
+	public function log_rendered_widget( $widget ) {
+		if ( $this->currently_rendered_widget_id !== $widget['id'] ) {
+			$this->currently_rendered_other_rendered_widget_ids[] = $widget['id'];
 		}
 	}
 

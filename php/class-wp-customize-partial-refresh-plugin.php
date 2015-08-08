@@ -160,6 +160,6 @@ class WP_Customize_Partial_Refresh_Plugin {
 	 * @return bool
 	 */
 	public function is_wpcom_vip_prod() {
-		return ( defined( '\WPCOM_IS_VIP_ENV' ) && \WPCOM_IS_VIP_ENV );
+		return ( defined( 'WPCOM_IS_VIP_ENV' ) && WPCOM_IS_VIP_ENV );
 	}
 }
