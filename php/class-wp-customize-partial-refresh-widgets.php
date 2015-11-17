@@ -80,7 +80,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 	 * @param string $id_base
 	 * @return bool
 	 */
-	function is_widget_partial_refreshable( $id_base) {
+	function is_widget_partial_refreshable( $id_base ) {
 		$partial_refreshable = false;
 		if ( in_array( $id_base, $this->core_widget_base_ids ) ) {
 			$partial_refreshable = true;
@@ -214,7 +214,7 @@ class WP_Customize_Partial_Refresh_Widgets {
 		$wp_scripts->add_data(
 			$this->plugin->script_handles['widgets-pane'],
 			'data',
-			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', json_encode( $exports ) )
+			sprintf( 'var _wpCustomizePartialRefreshWidgets_exports = %s;', wp_json_encode( $exports ) )
 		);
 	}
 
@@ -411,5 +411,4 @@ class WP_Customize_Partial_Refresh_Widgets {
 			$this->currently_rendered_other_rendered_widget_ids[] = $widget['id'];
 		}
 	}
-
 }

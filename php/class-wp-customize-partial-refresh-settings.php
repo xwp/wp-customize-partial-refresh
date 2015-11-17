@@ -116,7 +116,7 @@ class WP_Customize_Partial_Refresh_Settings {
 		/**
 		 * Filter partial value for a successful AJAX request.
 		 *
-		 * @param mixed                $partial The partial value. Default null. 
+		 * @param mixed                $partial The partial value. Default null.
 		 * @param WP_Customize_Setting $setting WP_Customize_Setting instance.
 		 */
 		$partial = apply_filters( 'customize_partial_refresh_settings', null, $setting );
@@ -124,7 +124,7 @@ class WP_Customize_Partial_Refresh_Settings {
 		/**
 		 * Filter partial value by setting ID for a successful AJAX request.
 		 *
-		 * @param mixed                $partial The partial value. Default null. 
+		 * @param mixed                $partial The partial value. Default null.
 		 * @param WP_Customize_Setting $setting WP_Customize_Setting instance.
 		 */
 		$partial = apply_filters( "customize_partial_refresh_{$setting->id}", $partial, $setting );
