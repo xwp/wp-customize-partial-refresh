@@ -10,7 +10,7 @@ Refresh parts of a Customizer preview instead of reloading the entire page when 
 **Stable tag:** trunk (master)  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
-[![Build Status](https://travis-ci.org/xwp/wp-customize-partial-refresh.png?branch=master)](https://travis-ci.org/xwp/wp-customize-partial-refresh) [![Build Status](https://coveralls.io/repos/xwp/wp-customize-partial-refresh/badge.png?branch=master)](https://coveralls.io/r/xwp/wp-customize-partial-refresh) 
+[![Build Status](https://travis-ci.org/xwp/wp-customize-partial-refresh.svg?branch=master)](https://travis-ci.org/xwp/wp-customize-partial-refresh) [![Coverage Status](https://coveralls.io/repos/xwp/wp-customize-partial-refresh/badge.svg?branch=master)](https://coveralls.io/github/xwp/wp-customize-partial-refresh) 
 
 ## Description ##
 
