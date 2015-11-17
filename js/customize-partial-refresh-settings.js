@@ -95,7 +95,7 @@ var customizePartialRefreshSettings = ( function( $ ) {
 				nonce: self.nonce,
 				setting_id: self.setting.id,
 				wp_customize: 'on',
-				customized: JSON.stringify( dirtyCustomized ),
+				customized: JSON.stringify( dirtyCustomized )
 			} );
 
 			req.done( function() {

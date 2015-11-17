@@ -1,6 +1,6 @@
 <?php
 
-class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends \WP_Ajax_UnitTestCase {
+class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCase {
 
 	/**
 	 * @var WP_Customize_Manager
