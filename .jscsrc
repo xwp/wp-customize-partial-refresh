@@ -4,7 +4,7 @@
 		"**/vendor/**",
 		"**/*.min.js",
 		"**/customize-partial-refresh-base.js",
-		"**/customize-partial-refresh-widgets-*.js"","
+		"**/customize-partial-refresh-widgets-*.js",
 		"**/node_modules/**"
 	]
 }
