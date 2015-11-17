@@ -71,12 +71,14 @@ class WP_Customize_Partial_Refresh_Settings {
 		global $wp_customize;
 
 		$settings = array();
-		foreach ( $wp_customize->settings() as $setting ) {
-			if ( empty( $setting->selector ) || 'partialRefresh' !== $setting->transport ) {
-				continue;
-			}
-			if ( $setting->check_capabilities() ) {
-				$settings[ $setting->id ] = $setting->selector;
+		if ( $wp_customize ) {
+			foreach ( $wp_customize->settings() as $setting ) {
+				if ( empty( $setting->selector ) || 'partialRefresh' !== $setting->transport ) {
+					continue;
+				}
+				if ( $setting->check_capabilities() ) {
+					$settings[ $setting->id ] = $setting->selector;
+				}
 			}
 		}
 		return $settings;
@@ -91,7 +93,7 @@ class WP_Customize_Partial_Refresh_Settings {
 		if ( ! check_ajax_referer( self::AJAX_ACTION, 'nonce', false ) ) {
 			status_header( 400 );
 			wp_send_json_error( 'bad_nonce' );
-		} else if ( ! is_customize_preview() ) {
+		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
 			status_header( 403 );
 			wp_send_json_error( 'customize_not_allowed' );
 		} else if ( ! isset( $_POST['setting_id'] ) ) {
@@ -107,7 +109,7 @@ class WP_Customize_Partial_Refresh_Settings {
 
 		if ( ! $setting ) {
 			wp_send_json_error( 'setting_not_found' );
-		} else if ( ! $setting->selector ) {
+		} else if ( empty( $setting->selector ) ) {
 			wp_send_json_error( 'setting_selector_not_found' );
 		}
 
