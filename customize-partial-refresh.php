@@ -28,6 +28,7 @@
  */
 
 require_once( __DIR__ . '/php/class-wp-customize-partial-refresh-plugin.php' );
+require_once( __DIR__ . '/php/class-wp-customize-partial-refresh-settings.php' );
 require_once( __DIR__ . '/php/class-wp-customize-partial-refresh-widgets.php' );
 require_once( __DIR__ . '/php/class-wp-customize-partial-refresh-exception.php' );
 $GLOBALS['wp_customize_partial_refresh_plugin'] = new WP_Customize_Partial_Refresh_Plugin();

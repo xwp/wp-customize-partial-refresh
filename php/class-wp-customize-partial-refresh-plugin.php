@@ -20,6 +20,11 @@ class WP_Customize_Partial_Refresh_Plugin {
 	public $dir_url = '';
 
 	/**
+	 * @var WP_Customize_Partial_Refresh_Settings
+	 */
+	public $settings;
+
+	/**
 	 * @var WP_Customize_Partial_Refresh_Widgets
 	 */
 	public $widgets;
@@ -46,6 +51,7 @@ class WP_Customize_Partial_Refresh_Plugin {
 		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
 		add_action( 'init', array( $this, 'init' ) );
+		$this->settings = new WP_Customize_Partial_Refresh_Settings( $this );
 		$this->widgets = new WP_Customize_Partial_Refresh_Widgets( $this );
 	}
 
@@ -81,6 +87,13 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 		$this->script_handles['widgets-pane'] = $handle;
+
+		$handle = 'customize-partial-refresh-settings';
+		$src = $this->get_dir_url( 'js/customize-partial-refresh-settings.js' );
+		$deps = array( 'jquery', 'wp-util' );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+		$this->script_handles['settings'] = $handle;
 	}
 
 	/**
