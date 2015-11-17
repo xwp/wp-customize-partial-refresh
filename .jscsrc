@@ -1,1 +1,10 @@
-dev-lib/.jscsrc
+{
+	"preset": "wordpress",
+	"excludeFiles": [
+		"**/vendor/**",
+		"**/*.min.js",
+		"**/customize-partial-refresh-base.js",
+		"**/customize-partial-refresh-widgets-*.js"","
+		"**/node_modules/**"
+	]
+}
