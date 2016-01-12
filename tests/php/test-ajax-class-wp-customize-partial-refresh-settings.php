@@ -206,7 +206,7 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
 			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
 			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}'
+			'customized' => '{"foo":{"value":"custom","dirty":true}}',
 		);
 
 		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
@@ -236,7 +236,7 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
 			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
 			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}'
+			'customized' => '{"foo":{"value":"custom","dirty":true}}',
 		);
 
 		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
@@ -267,7 +267,7 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
 			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
 			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}'
+			'customized' => '{"foo":{"value":"custom","dirty":true}}',
 		);
 
 		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
@@ -298,7 +298,7 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
 			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
 			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}'
+			'customized' => '{"foo":{"value":"custom","dirty":true}}',
 		);
 
 		add_filter( 'customize_partial_refresh_foo', '__return_true' );
