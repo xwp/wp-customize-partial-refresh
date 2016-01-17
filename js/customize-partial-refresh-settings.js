@@ -6,123 +6,122 @@ var customizePartialRefreshSettings = ( function( $ ) {
 	var self, api = wp.customize;
 
 	self = {
-		setting: null
+		settingSelectors: {}
 	};
 
 	$.extend( self, _customizePartialRefreshSettings );
+
+	/*
+	 * Inject the selectors into the setting objects. This will not be needed
+	 * in Core because the selector would be output via WP_Customize_Setting::json().
+	 */
+	api.bind( 'add', function( setting ) {
+		if ( self.settingSelectors[ setting.id ] ) {
+			setting.selector = self.settingSelectors[ setting.id ];
+		}
+		if ( setting.selector ) {
+			console.info(setting.selector);
+			setting.bind( self.onChangeSetting );
+		}
+	} );
 
 	/**
 	 * Inject the functionality.
 	 */
 	self.init = function() {
 		api.bind( 'ready', function() {
-			self.onChangeSetting();
-		} );
-
-		api.bind( 'setting-partial', function( response ) {
-			var that = $( 'iframe' ).contents(),
-				value = $.trim( response );
-
-			$( self.setting.selector, that ).html( value );
+			self.request = _.debounce( self.request, api.previewer.refreshBuffer );
 		} );
 	};
+
+	self._settingValuesPendingPreview = {};
+	//
+	//self.getSettingSelector = function( settingId ) {
+	//	var setting = api( settingId );
+	//	if ( setting && setting.selector ) {
+	//		return;
+	//	}
+	//};
 
 	/**
 	 * Change event for selective settings, requests a new value.
 	 */
 	self.onChangeSetting = function() {
-		$.each( self.settings, function( id, selector ) {
+		var setting = this;
+		if ( ! setting.selector ) {
+			return;
+		}
+		self._settingValuesPendingPreview[ setting.id ] = setting.get();
 
-			api( id, function( setting ) {
-
-				setting.bind( function() {
-					self.setting = {
-						id: id,
-						selector: selector
-					};
-					self.request();
-				} );
-			} );
-		} );
+		// @todo A message should be sent to the preview now indicating selective refresh has been initiated. This would allow a loading indicaor to be added.
+		self.request();
+		// @todo On fail, then what?
 	};
 
+	self._currentRequest = null;
+
 	/**
-	 * Request a new setting value.
+	 * Preview the settings when the value changes.
 	 *
-	 * @return {jQuery.Deferred}
+	 * @todo return {jQuery.Deferred}
 	 */
 	self.request = function() {
-		var spinner = $( '#customize-header-actions .spinner' ),
-			active = 'is-active',
-			deferred = $.Deferred(),
-			req = self.debounceRequest();
+		var dirtyCustomized = {}, selectiveRefreshSettingIds;
 
-		spinner.addClass( active );
+		if ( self._currentRequest ) {
+			self._currentRequest.abort();
+		}
 
-		req.done( function( response ) {
-			deferred.resolve();
-			api.trigger( 'setting-partial', response );
-			spinner.removeClass( active );
+		selectiveRefreshSettingIds = _.keys( self._settingValuesPendingPreview );
+		_.extend( dirtyCustomized, self._settingValuesPendingPreview );
+		api.each( function( setting, key ) {
+			if ( setting._dirty ) {
+				dirtyCustomized[ key ] = setting();
+			}
+			if ( setting.selector ) {
+				selectiveRefreshSettingIds.push( setting.id );
+			}
 		} );
 
-		req.fail( function() {
-			deferred.reject.apply( deferred, arguments );
+		self._currentRequest = wp.ajax.post( self.action, {
+			nonce: self.nonce,
+			wp_customize: 'on',
+			setting_ids: _.uniq( selectiveRefreshSettingIds ),
+			customized: JSON.stringify( dirtyCustomized )
+		} );
+
+		self._currentRequest.done( function( response ) {
+			_.each( response, function( result, settingId ) {
+				var setting = api( settingId );
+
+				if ( ! _.isObject( result ) || ( _.isUndefined( result.data ) && _.isUndefined( result.error ) ) ) {
+					throw new Error( 'selective_refresh_response_not_array_of_objects' );
+				}
+
+				// Skip settings that are now deleted or which no longer have associated selectors.
+				if ( ! setting || ! setting.selector ) {
+					return;
+				}
+
+				if ( result.error ) {
+
+					// @todo Show validation message?
+					api.previewer.refresh();
+				} else {
+					api.previewer.send( 'selective-refresh', settingId, setting.selector, result.data );
+				}
+			} );
+
+			// Reset the settings' pending values to preview.
+			self._settingValuesPendingPreview = {};
+		} );
+
+		self._currentRequest.fail( function() {
 			api.previewer.refresh();
-			spinner.removeClass( active );
 		} );
-
-		return deferred;
 	};
 
-	/**
-	 * Debounce the requests, allowing setting changes made back-to-back to be sent together.
-	 *
-	 * @return {jQuery.Deferred}
-	 */
-	self.debounceRequest = ( function() {
-		var request, debouncedDeferreds = [];
-
-		request = _.debounce( function() {
-			var req, dirtyCustomized = {};
-
-			api.each( function( value, key ) {
-				if ( value._dirty ) {
-					dirtyCustomized[ key ] = value();
-				}
-			} );
-
-			req = wp.ajax.post( self.action, {
-				nonce: self.nonce,
-				setting_id: self.setting.id,
-				wp_customize: 'on',
-				customized: JSON.stringify( dirtyCustomized )
-			} );
-
-			req.done( function() {
-				var deferred;
-				while ( debouncedDeferreds.length ) {
-					deferred = debouncedDeferreds.shift();
-					deferred.resolveWith( req, arguments );
-				}
-			} );
-
-			req.fail( function() {
-				var deferred;
-				while ( debouncedDeferreds.length ) {
-					deferred = debouncedDeferreds.shift();
-					deferred.rejectWith( req, arguments );
-				}
-			} );
-
-		} );
-
-		return function() {
-			var deferred = $.Deferred();
-			debouncedDeferreds.push( deferred );
-			request();
-			return deferred;
-		};
-	}() );
-
 	self.init();
+
+	return self;
 }( jQuery ) );

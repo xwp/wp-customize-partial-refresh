@@ -41,6 +41,8 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 	}
 
 	function do_customize_boot_actions() {
+
+
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		do_action( 'setup_theme' );
 		$_REQUEST['nonce'] = wp_create_nonce( 'preview-customize_' . $this->wp_customize->theme()->get_stylesheet() );
