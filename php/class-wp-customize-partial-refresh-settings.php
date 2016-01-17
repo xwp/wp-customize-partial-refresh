@@ -19,7 +19,9 @@ class WP_Customize_Partial_Refresh_Settings {
 	public $plugin;
 
 	/**
-	 * Contructor.
+	 * Constructor.
+	 *
+	 * @param WP_Customize_Partial_Refresh_Plugin $plugin Plugin instance.
 	 */
 	public function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
 		$this->plugin = $plugin;
@@ -32,9 +34,6 @@ class WP_Customize_Partial_Refresh_Settings {
 	 * @action after_setup_theme
 	 */
 	public function init() {
-		if ( ! current_theme_supports( 'customize-partial-refresh', 'settings' ) ) {
-			return;
-		}
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( $this, 'refresh' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_scripts' ) );
 	}

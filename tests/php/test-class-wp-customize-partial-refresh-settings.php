@@ -65,14 +65,9 @@ class Test_WP_Customize_Partial_Refresh_Settings extends WP_UnitTestCase {
 	 * @see WP_Customize_Partial_Refresh_Settings::init()
 	 */
 	function test_init() {
-		add_theme_support( 'customize-partial-refresh', array(
-			'settings'
-		) );
-		$this->assertTrue( current_theme_supports( 'customize-partial-refresh', 'settings' ) );
 		$settings = new WP_Customize_Partial_Refresh_Settings( $this->plugin );
 		$settings->init();
 		$this->assertEquals( 10, has_action( 'customize_controls_print_footer_scripts', array( $settings, 'enqueue_scripts' ) ) );
-		remove_theme_support( 'customize-partial-refresh' );
 	}
 
 	/**

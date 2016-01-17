@@ -26,12 +26,8 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 		$GLOBALS['wp_customize'] = new WP_Customize_Manager();
 		$this->wp_customize = $GLOBALS['wp_customize'];
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
-		add_theme_support( 'customize-partial-refresh', array(
-			'settings'
-		) );
 		$this->plugin = $GLOBALS['wp_customize_partial_refresh_plugin'];
 		$this->settings = new WP_Customize_Partial_Refresh_Settings( $this->plugin );
-		remove_action( 'after_setup_theme', 'twentyfifteen_setup' );
 	}
 
 	function tearDown() {
@@ -41,7 +37,6 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 		unset( $GLOBALS['wp_scripts'] );
 		unset( $_SERVER['REQUEST_METHOD'] );
 		unset( $_REQUEST['wp_customize'] );
-		remove_theme_support( 'customize-partial-refresh' );
 		parent::tearDown();
 	}
 
