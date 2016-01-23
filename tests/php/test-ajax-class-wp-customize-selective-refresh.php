@@ -227,7 +227,7 @@ class Test_Ajax_WP_Customize_Selective_Refresh extends WP_Ajax_UnitTestCase {
 		$this->do_customize_boot_actions();
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 		$this->wp_customize->add_setting( 'foo', array(
-			'default'   => 'arbitrary-value'
+			'default'   => 'arbitrary-value',
 		) );
 
 		$_POST = array(
