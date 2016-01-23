@@ -1,6 +1,6 @@
 <?php
 
-class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCase {
+class Test_Ajax_WP_Customize_Selective_Refresh extends WP_Ajax_UnitTestCase {
 
 	/**
 	 * @var WP_Customize_Manager
@@ -13,9 +13,9 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 	public $plugin;
 
 	/**
-	 * @var WP_Customize_Partial_Refresh_Settings
+	 * @var WP_Customize_Selective_Refresh
 	 */
-	public $settings;
+	public $selective_refresh;
 
 	/**
 	 * Set up the test fixture.
@@ -27,7 +27,8 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 		$this->wp_customize = $GLOBALS['wp_customize'];
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 		$this->plugin = $GLOBALS['wp_customize_partial_refresh_plugin'];
-		$this->settings = new WP_Customize_Partial_Refresh_Settings( $this->plugin );
+		$this->selective_refresh = new WP_Customize_Selective_Refresh( $this->plugin );
+		remove_action( 'after_setup_theme', 'twentyfifteen_setup' );
 	}
 
 	function tearDown() {
@@ -71,11 +72,11 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 	function test_ajax_refresh_nonce_check() {
 		$this->do_customize_boot_actions();
 		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
 			'nonce' => 'bad-nonce-12345',
 		);
 
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
 
 		// Get the results.
 		$response = json_decode( $this->_last_response, true );
@@ -100,11 +101,11 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 		wp_set_current_user( $this->factory->user->create( array( 'role' => $role ) ) );
 
 		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
+			'nonce' => wp_create_nonce( WP_Customize_Selective_Refresh::AJAX_ACTION ),
 		);
 
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
 
 		// Get the results.
 		$response = json_decode( $this->_last_response, true );
@@ -159,119 +160,61 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 				'administrator',
 				array(
 					'success' => false,
-					'data'    => 'missing_setting_id',
+					'data'    => 'missing_setting_ids',
 				),
 			),
 		);
 	}
 
 	/**
-	 * Testing missing_customized for the refresh method
+	 * Testing bad_setting_ids for the refresh method
 	 */
-	function test_ajax_refresh_customized() {
+	function test_ajax_refresh_bad_setting_ids() {
 		$this->do_customize_boot_actions();
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 
 		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
-			'setting_id' => 'foo',
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
+			'nonce' => wp_create_nonce( WP_Customize_Selective_Refresh::AJAX_ACTION ),
+			'setting_ids' => 'foo',
 		);
 
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
 
 		// Get the results.
 		$response = json_decode( $this->_last_response, true );
 		$expected_results = array(
 			'success' => false,
-			'data'    => 'missing_customized',
+			'data'    => 'bad_setting_ids',
 		);
 
 		$this->assertSame( $expected_results, $response );
 	}
 
 	/**
-	 * Test setting_not_found for the refresh method
+	 * Test unrecognized_setting for the refresh method
 	 */
-	function test_ajax_refresh_setting_not_found() {
+	function test_ajax_refresh_unrecognized_setting() {
 		$this->do_customize_boot_actions();
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 
 		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
-			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}',
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
+			'nonce' => wp_create_nonce( WP_Customize_Selective_Refresh::AJAX_ACTION ),
+			'setting_ids' => array( 'foo' ),
 		);
 
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
 
 		// Get the results.
 		$response = json_decode( $this->_last_response, true );
 		$expected_results = array(
-			'success' => false,
-			'data'    => 'setting_not_found',
-		);
-
-		$this->assertSame( $expected_results, $response );
-	}
-
-	/**
-	 * Test setting_selector_not_found for the refresh method
-	 */
-	function test_ajax_refresh_setting_selector_not_found() {
-		$this->do_customize_boot_actions();
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
-		$this->wp_customize->add_setting( 'foo', array(
-			'default'   => 'default',
-			'transport' => 'partialRefresh',
-		) );
-
-		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
-			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}',
-		);
-
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
-
-		// Get the results.
-		$response = json_decode( $this->_last_response, true );
-		$expected_results = array(
-			'success' => false,
-			'data'    => 'setting_selector_not_found',
-		);
-
-		$this->assertSame( $expected_results, $response );
-	}
-
-	/**
-	 * Test missing_required_filter for the refresh method
-	 */
-	function test_ajax_refresh_missing_required_filter() {
-		$this->do_customize_boot_actions();
-		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
-		$this->wp_customize->add_setting( 'foo', array(
-			'default'   => 'default',
-			'transport' => 'partialRefresh',
-		) );
-		$this->wp_customize->get_setting( 'foo' )->selector  = '.foo';
-
-		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
-			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}',
-		);
-
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
-
-		// Get the results.
-		$response = json_decode( $this->_last_response, true );
-		$expected_results = array(
-			'success' => false,
-			'data'    => 'missing_required_filter',
+			'success' => true,
+			'data' => array(
+				'foo' => array(
+					'error' => 'unrecognized_setting',
+				),
+			),
 		);
 
 		$this->assertSame( $expected_results, $response );
@@ -284,28 +227,68 @@ class Test_Ajax_WP_Customize_Partial_Refresh_Settings extends WP_Ajax_UnitTestCa
 		$this->do_customize_boot_actions();
 		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
 		$this->wp_customize->add_setting( 'foo', array(
-			'default'   => 'default',
-			'transport' => 'partialRefresh',
+			'default'   => 'arbitrary-value'
 		) );
-		$this->wp_customize->get_setting( 'foo' )->selector  = '.foo';
 
 		$_POST = array(
-			'action' => WP_Customize_Partial_Refresh_Settings::AJAX_ACTION,
-			'nonce' => wp_create_nonce( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION ),
-			'setting_id' => 'foo',
-			'customized' => '{"foo":{"value":"custom","dirty":true}}',
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
+			'nonce' => wp_create_nonce( WP_Customize_Selective_Refresh::AJAX_ACTION ),
+			'setting_ids' => array( 'foo' ),
 		);
 
-		add_filter( 'customize_partial_refresh_foo', '__return_true' );
-		$this->make_ajax_call( WP_Customize_Partial_Refresh_Settings::AJAX_ACTION );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
 
 		// Get the results.
 		$response = json_decode( $this->_last_response, true );
 		$expected_results = array(
 			'success' => true,
-			'data'    => true,
+			'data' => array(
+				'foo' => array(
+					'data' => 'arbitrary-value',
+				),
+			),
 		);
 
 		$this->assertSame( $expected_results, $response );
+	}
+
+	/**
+	 * Test a successful filtered response for the refresh method
+	 */
+	function test_ajax_refresh_success_filtered() {
+		$this->do_customize_boot_actions();
+		wp_set_current_user( $this->factory->user->create( array( 'role' => 'administrator' ) ) );
+		$this->wp_customize->add_setting( 'foo', array(
+			'default'   => 'arbitrary-value',
+		) );
+
+		$_POST = array(
+			'action' => WP_Customize_Selective_Refresh::AJAX_ACTION,
+			'nonce' => wp_create_nonce( WP_Customize_Selective_Refresh::AJAX_ACTION ),
+			'setting_ids' => array( 'foo' ),
+		);
+
+		add_filter( 'customize_setting_render_foo', array( $this, 'filter_foo' ), 10, 2 );
+		$this->make_ajax_call( WP_Customize_Selective_Refresh::AJAX_ACTION );
+
+		// Get the results.
+		$response = json_decode( $this->_last_response, true );
+		$expected_results = array(
+			'success' => true,
+			'data' => array(
+				'foo' => array(
+					'data' => 'new-value',
+				),
+			),
+		);
+
+		$this->assertSame( $expected_results, $response );
+	}
+
+	/**
+	 * Helper method to filte the rendered value of the foo setting.
+	 */
+	function filter_foo( $rendered, $setting ) {
+		return 'new-value';
 	}
 }
