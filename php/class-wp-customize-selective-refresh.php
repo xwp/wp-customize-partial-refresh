@@ -36,6 +36,54 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
+	 * Registered instances of WP_Customize_Partial.
+	 *
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @since 4.5.0
+	 * @access protected
+	 * @var WP_Customize_Partial[]
+	 */
+	protected $partials = array();
+
+	/**
+	 * Get the registered partials.
+	 *
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @return WP_Customize_Partial[] Partials.
+	 */
+	public function partials() {
+		return $this->partials;
+	}
+
+	/**
+	 * Add a customize partial.
+	 *
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @access public
+	 *
+	 * @param WP_Customize_Partial|string $id   Customize Partial object, or Panel ID.
+	 * @param array                       $args Optional. Partial arguments. Default empty array.
+	 *
+	 * @return WP_Customize_Partial             The instance of the panel that was added.
+	 */
+	public function add_partial( $id, $args = array() ) {
+		if ( $id instanceof WP_Customize_Partial ) {
+			$partial = $id;
+		} else {
+			$partial = new WP_Customize_Partial( $this->plugin, $id, $args );
+		}
+
+		$this->partials[ $partial->id ] = $partial;
+		return $partial;
+	}
+
+	/**
 	 * Initialize selective partial refresh.
 	 *
 	 * @action after_setup_theme
