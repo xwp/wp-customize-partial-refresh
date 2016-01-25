@@ -39,6 +39,13 @@ class WP_Customize_Partial {
 	public $id;
 
 	/**
+	 * The jQuery selector to find the container element for the partial.
+	 *
+	 * @var string
+	 */
+	public $selector;
+
+	/**
 	 * All settings tied to the partial.
 	 *
 	 * @access public
@@ -182,6 +189,8 @@ class WP_Customize_Partial {
 	public function json() {
 		$exports = array();
 		$exports['settings'] = $this->settings;
+		$exports['primary_setting'] = $this->primary_setting;
+		$exports['selector'] = $this->selector;
 		return $exports;
 	}
 }
