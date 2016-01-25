@@ -4,12 +4,7 @@
  */
 class WP_Customize_Selective_Refresh {
 
-	/**
-	 * Alias for the AJAX action.
-	 *
-	 * @type string
-	 */
-	const AJAX_ACTION = 'customize_partial_refresh_settings';
+	const PARTIAL_RENDER_QUERY_VAR = 'wp_customize_partial_render';
 
 	/**
 	 * WP_Customize_Partial_Refresh_Plugin instance.
@@ -23,7 +18,7 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @var WP_Customize_Manager
 	 */
-	public $customize_manager;
+	public $manager;
 
 	/**
 	 * Constructor.
@@ -84,17 +79,43 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
+	 * Retrieve a customize partial.
+	 *
+	 * @since 4.5.0
+	 *
+	 * @param string $id Customize Partial ID.
+	 * @return WP_Customize_Partial|null The partial, if set.
+	 */
+	public function get_partial( $id ) {
+		if ( isset( $this->partials[ $id ] ) ) {
+			return $this->partials[ $id ];
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Remove a customize partial.
+	 *
+	 * @since 4.5.0
+	 *
+	 * @param string $id Customize Partial ID.
+	 */
+	public function remove_partial( $id ) {
+		unset( $this->partials[ $id ] );
+	}
+
+	/**
 	 * Initialize selective partial refresh.
 	 *
 	 * @action after_setup_theme
 	 */
 	public function init() {
-		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( $this, 'refresh' ) );
-		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
 		global $wp_customize;
 		if ( isset( $wp_customize ) ) {
-			$this->customize_manager = $wp_customize;
+			$this->manager = $wp_customize;
 		}
+		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
 	}
 
@@ -104,7 +125,9 @@ class WP_Customize_Selective_Refresh {
 	 * @action customize_preview_init
 	 */
 	public function init_preview() {
+		add_action( 'template_redirect', array( $this, 'render_partial' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
+		add_action( 'wp_print_footer_scripts', array( $this, 'export_preview_data' ) );
 	}
 
 	/**
@@ -116,11 +139,7 @@ class WP_Customize_Selective_Refresh {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-pane'] );
 
 		// Script data array.
-		$exports = array(
-			'nonce' => wp_create_nonce( self::AJAX_ACTION ),
-			'action' => self::AJAX_ACTION,
-			'settingSelectors' => $this->get_setting_selectors(),
-		);
+		$exports = array();
 
 		// Export data to JS.
 		wp_scripts()->add_data(
@@ -140,99 +159,95 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
-	 * An array of all the selectors for settings.
-	 *
-	 * @todo This will be exported as part of WP_Customize_Setting::json() in the core merge.
-	 *
-	 * @return array
+	 * Export data for the Customizer preview.
 	 */
-	public function get_setting_selectors() {
-		$settings = array();
-		if ( $this->customize_manager ) {
-			foreach ( $this->customize_manager->settings() as $setting ) {
-				if ( ! empty( $setting->selector ) && $setting->check_capabilities() ) {
-					$settings[ $setting->id ] = $setting->selector;
-				}
-			}
+	function export_preview_data() {
+
+		$partials = array();
+		foreach ( $this->partials() as $partial ) {
+			$partials[ $partial->id ] = $partial->json();
 		}
-		return $settings;
+
+		$exports = array(
+			'partials'       => $partials,
+			'renderQueryVar' => self::PARTIAL_RENDER_QUERY_VAR,
+			'requestUri'     => empty( $_SERVER['REQUEST_URI'] ) ? home_url( '/' ) : esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ),
+			'theme'          => array(
+				'stylesheet' => $this->manager->get_stylesheet(),
+				'active'     => $this->manager->is_theme_active(),
+			),
+			'previewNonce'   => wp_create_nonce( 'preview-customize_' . $this->manager->get_stylesheet() ), // @todo This needs to get updated when re-login or noncerefresh.
+		);
+
+		printf( 'var _customizeSelectiveRefreshExports = %s;', wp_json_encode( $exports ) );
 	}
 
 	/**
 	 * Ajax request to return the settings partial value.
 	 *
-	 * @action wp_ajax_customize_partial_refresh_settings
+	 * @action template_redirect
 	 */
-	public function refresh() {
-		if ( ! check_ajax_referer( self::AJAX_ACTION, 'nonce', false ) ) {
-			status_header( 400 );
-			wp_send_json_error( 'bad_nonce' );
+	public function render_partial() {
+		if ( ! isset( $_POST[ static::PARTIAL_RENDER_QUERY_VAR ] ) ) {
+			return;
+		}
+
+		$this->manager->remove_preview_signature();
+
+		// @todo Allow JS to pass additional args for the partial, like the context, such as the nav menu args. See \WP_Customize_Nav_Menus::render_menu();
+		if ( ! check_ajax_referer( 'preview-customize_' . $this->manager->get_stylesheet(), 'nonce', false ) ) {
+			status_header( 403 );
+			wp_send_json_error( 'nonce_check_fail' );
 		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
 			status_header( 403 );
-			wp_send_json_error( 'customize_not_allowed' );
-		} else if ( ! isset( $_POST['setting_ids'] ) ) {
+			wp_send_json_error( 'expected_customize_preview' );
+		} else if ( ! isset( $_POST['partial_ids'] ) ) {
 			status_header( 400 );
-			wp_send_json_error( 'missing_setting_ids' );
-		} else if ( ! is_array( $_POST['setting_ids'] ) ) {
+			wp_send_json_error( 'missing_partial_ids' );
+		} else if ( ! is_array( $_POST['partial_ids'] ) ) {
 			status_header( 400 );
-			wp_send_json_error( 'bad_setting_ids' );
+			wp_send_json_error( 'bad_partial_ids' );
 		}
 
 		$results = array();
 
-		foreach ( $this->customize_manager->settings() as $setting ) {
-			$setting->preview();
-		}
-
-		$setting_ids = wp_unslash( $_POST['setting_ids'] );
-		foreach ( $setting_ids as $setting_id ) {
-			$setting = $this->customize_manager->get_setting( $setting_id );
-			if ( ! $setting ) {
-				$results[ $setting_id ] = array( 'error' => 'unrecognized_setting' );
+		$partial_ids = wp_unslash( $_POST['partial_ids'] );
+		foreach ( $partial_ids as $partial_id ) {
+			$partial = $this->get_partial( $partial_id );
+			if ( ! $partial ) {
+				$results[ $partial_id ] = array( 'error' => 'unrecognized_partial' );
 				continue;
 			}
 
-			$rendered = null;
-			if ( method_exists( $setting, 'render' ) ) {
-				// @todo This will not be needed after the core merge, because the setting will take this as part of the construcor?
-				// @todo There should be a WP_Customize_Setting::render() which by default is added as the filter.
-				// @todo Note that the default implementation of
-				// Note render in the context of the REST API. The value() corresponds to raw in the API.
-				$rendered = $setting->render(); // @todo Or render_partial? Do we need to add output buffering, allowing echo?
-			} else {
-				/*
-				 * The default WP_Customize_Setting::render() method would just
-				 * be an alias for WP_Customize_Setting::value(), which would
-				 * include PHP sanitization. An implementation of a setting would
-				 * then define a render() method to add any filters needed to
-				 * render the raw value for display.
-				 *
-				 * @todo What about a setting that appears in multiple contexts?? It could have different renderings applied. Should a setting have multiple selectors?
-				 * @todo This should be abstracted away from partials altogether. A partial is what displays a rendered value.
-				 * @todo Each postMessage value should get sent for sanitization and update in the setting regardless. This can be done as part of transactions when they are pushed.
-				 * @todo There should be a new WP_Customize_Partial which has a selector and can be tied to any number of settings.
-				 * @todo There is the raw JS value, the raw sanitized PHP value, and any number of PHP-rendered partials for the PHP-sanitized setting.
-				 */
-				$rendered = $setting->value();
-			}
+			$rendered = $partial->render();
+
+			/*
+			 * Note that the sanitized value of a given setting needn't be passed
+			 * back to the Customizer here because this will be handled in the transaction
+			 * PATCH request. Additionally, the rendering of a single raw setting value
+			 * is not relevant since we are only interested in rendering template
+			 * partials in which the setting is only a part. So the $rendered
+			 * here does directly correspond to the $partial->settings in the
+			 * sense of the REST API, although it is clearly related.
+			 */
 
 			/**
-			 * Filter partial value for a successful AJAX request.
+			 * Filter partial rendering.
 			 *
 			 * @param mixed                $rendered The partial value. Default null.
-			 * @param WP_Customize_Setting $setting WP_Customize_Setting instance.
+			 * @param WP_Customize_Partial $partial WP_Customize_Setting instance.
 			 */
-			$rendered = apply_filters( 'customize_setting_render', $rendered, $setting );
+			$rendered = apply_filters( 'customize_setting_render', $rendered, $partial );
 
 			/**
-			 * Filter partial value by setting ID for a successful AJAX request.
+			 * Filter partial rendering by the partial ID.
 			 *
 			 * @param mixed                $rendered The partial value. Default null.
-			 * @param WP_Customize_Setting $setting WP_Customize_Setting instance.
+			 * @param WP_Customize_Partial $partial WP_Customize_Setting instance.
 			 */
-			$rendered = apply_filters( "customize_setting_render_{$setting->id}", $rendered, $setting );
+			$rendered = apply_filters( "customize_setting_render_{$partial->id}", $rendered, $partial );
 
-			$results[ $setting_id ] = array(
+			$results[ $partial_id ] = array(
 				'data' => $rendered,
 			);
 		}
