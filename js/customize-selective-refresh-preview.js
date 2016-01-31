@@ -217,49 +217,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 	self.partial = new api.Values({ defaultConstructor: self.Partial });
 
-	// Clear _dirty states when Customizer is saved.
-	// @todo Remove this once #35616 is committed to Core.
-	api.bind( 'saved', function() {
-		api.each( function( setting ) {
-			setting._dirty = false;
-		} );
-	} );
-
 	api.bind( 'preview-ready', function() {
-
-		// @todo Remove this once #35616 is committed to Core.
-		api.preview.bind( 'saved', function( response ) {
-			api.trigger( 'saved', response );
-		} );
-		$.each( self.data.dirtySettings, function( i, id ) {
-			var setting = api( id );
-			if ( setting ) {
-				setting._dirty = true;
-			}
-		} );
-
-		// @todo Remove this once #35617 is committed to Core.
-		if ( ! api.settings.nonce ) {
-			api.settings.nonce = {};
-		}
-		if ( ! api.settings.theme ) {
-			api.settings.theme = self.data.theme;
-		}
-		if ( ! api.settings.url ) {
-			api.settings.url = {};
-		}
-		if ( ! api.settings.url.self ) {
-			api.settings.url.self = self.data.requestUri;
-		}
-		if ( ! api.settings.nonce.preview ) {
-			api.settings.nonce.preview = self.data.previewNonce;
-		}
-		api.preview.bind( 'nonce-refresh', function( nonce ) {
-			if ( ! api.settings.nonce ) {
-				api.settings.nonce = {};
-			}
-			$.extend( api.settings.nonce, nonce );
-		});
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
