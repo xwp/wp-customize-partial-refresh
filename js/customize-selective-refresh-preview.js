@@ -143,34 +143,92 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 			partial.currentRequest.done( function( data ) {
 				var partialData = data[ partial.id ];
-				if ( ! partialData || partialData.error ) {
-					api.preview.send( 'refresh' );
+				if ( ! _.isObject( partialData ) || partialData.error ) {
+					partial.handleRenderFail( _.extend( { error: 'fail' }, partialData ) );
+				} else {
+					partial.handleRenderSuccess( partialData );
+				}
+			} );
+			partial.currentRequest.fail( function( jqXHR, textStatus, errorThrown ) {
+
+				// Ignore failures caused by partial.currentRequest.abort()
+				if ( 'abort' === textStatus ) {
 					return;
 				}
-
-				partial.findContainers().each( function() {
-					var container = $( this ), rendered;
-					rendered = partialData.data;
-
-					// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
-					// @todo Initialize the MediaElement.js player for any posts not previously initialized
-					// @todo Will Jetpack do this for us as well?
-					if ( wp && wp.emoji && wp.emoji.parse ) {
-						rendered = wp.emoji.parse( rendered );
-					}
-					container.html( rendered );
-
-					partial.renderMediaElements( container );
-
-					container.removeClass( 'customize-partial-refreshing' );
+				partial.handleRenderFail( {
+					error: errorThrown ? errorThrown.message : textStatus,
+					errorThrown: errorThrown,
+					jqXHR: jqXHR
 				} );
 			} );
-			partial.currentRequest.fail( function( jqXHR, textStatus ) {
-				if ( 'abort' !== textStatus ) {
-					api.preview.send( 'refresh' );
-				}
-			} );
 		}, self.data.refreshBuffer ),
+
+		/**
+		 * Request full page refresh.
+		 *
+		 * @todo When selective refresh is embedded in the context of frontend editing, this request must fail or else changes will be lost, unless transactions are implemented.
+		 */
+		requestFullRefresh: function() {
+			api.preview.send( 'refresh' );
+		},
+
+		/**
+		 * Handle successful response to
+		 *
+		 * @param response
+		 */
+		handleRenderSuccess: function( response ) {
+			var partial = this;
+
+			// @todo Trigger event which allows custom rendering to be aborted, to force a refresh? Or rather just implement subclassed Partial classes?
+
+			if ( ! partial.canSelectiveRefresh( response ) ) {
+				partial.requestFullRefresh();
+				return;
+			}
+
+			partial.findContainers().each( function() {
+				var container = $( this ), rendered;
+				rendered = response.data;
+
+				// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
+				// @todo Initialize the MediaElement.js player for any posts not previously initialized
+				// @todo Will Jetpack do this for us as well?
+				if ( wp && wp.emoji && wp.emoji.parse ) {
+					rendered = wp.emoji.parse( rendered );
+				}
+				container.html( rendered );
+
+				partial.renderMediaElements( container );
+
+				container.removeClass( 'customize-partial-refreshing' );
+			} );
+		},
+
+		/**
+		 * Handle fail to render partial.
+		 *
+		 * @param {object} response
+		 * @param {string} response.error
+		 */
+		handleRenderFail: function() {
+			var partial = this;
+			partial.requestFullRefresh();
+		},
+
+		/**
+		 * Return whether the partial render response can be selectively refreshed.
+		 *
+		 * @param {object} response
+		 * @param {string} [response.error]
+		 * @param {string} [response.data]
+		 * @returns {boolean}
+		 */
+		canSelectiveRefresh: function( response ) {
+			return response && ! response.error;
+		},
+
+		// @todo ? shouldFullRefresh: function( response ) {},
 
 		/**
 		 * Adapted from Scroller.prototype.initializeMejs in Jetpack Infinite Scroll module
