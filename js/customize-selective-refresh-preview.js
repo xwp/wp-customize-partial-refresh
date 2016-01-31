@@ -57,7 +57,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partial.defaults
 			) );
 
-			// @todo Add templateSelector? Add container?
+			// @todo Add templateSelector? Add container? No, these can be added by subclasses and used optionally.
 		},
 
 		/**
@@ -71,7 +71,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Get list of setting IDs.
+		 * Get list of setting IDs related to this partial.
 		 *
 		 * @returns {Array}
 		 */
@@ -293,20 +293,25 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 	} );
 
+	self.partialConstructor = {};
+
 	self.partial = new api.Values({ defaultConstructor: self.Partial });
 
 	api.bind( 'preview-ready', function() {
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
-			var partial = self.partial( id );
+			var Constructor, partial = self.partial( id );
 			if ( ! partial ) {
-				self.partial.create( id, id, { params: data } );
+				Constructor = self.partialConstructor[ data.type ] || self.Partial;
+				partial = new Constructor( id, { params: data } );
+				self.partial.add( id, partial );
 			} else {
 				_.extend( partial.params, data );
 			}
 		} );
 
+		// Trigger update for each partial that is associated with a changed setting.
 		api.bind( 'change', function( setting ) {
 			self.partial.each( function( partial ) {
 				if ( -1 !== _.indexOf( partial.settings(), setting.id ) ) {
