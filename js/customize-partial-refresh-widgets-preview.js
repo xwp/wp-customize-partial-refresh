@@ -90,6 +90,7 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 			} );
 
 			// Currently customize-preview.js is not creating settings for dynamically-created settings in the pane; so we have to do it
+			// @todo This will not be needed once #35616 is applied to Core.
 			wp.customize.preview.bind( 'setting', function( args ) {
 				var id, value;
 				args = args.slice();

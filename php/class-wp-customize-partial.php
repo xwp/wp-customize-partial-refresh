@@ -39,6 +39,15 @@ class WP_Customize_Partial {
 	public $id;
 
 	/**
+	 * Type of this partial.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 * @var string
+	 */
+	public $type = 'default';
+
+	/**
 	 * The jQuery selector to find the container element for the partial.
 	 *
 	 * @var string
@@ -101,7 +110,7 @@ class WP_Customize_Partial {
 		}
 
 		$this->plugin = $plugin; // @todo This will be $manager in the Core merge.
-		$this->manager = $plugin->selective_refresh->customize_manager;
+		$this->manager = $plugin->selective_refresh->manager;
 		$this->id = $id;
 		if ( empty( $this->render_callback ) ) {
 			$this->render_callback = array( $this, 'render_callback' );
@@ -132,9 +141,17 @@ class WP_Customize_Partial {
 		$render = null;
 		if ( ! empty( $this->render_callback ) ) {
 			ob_start();
-			$render = call_user_func( $this->render_callback, $this );
+			$return_render = call_user_func( $this->render_callback, $this );
 			$ob_render = ob_get_clean();
-			if ( ! empty( $ob_render ) ) {
+
+			if ( null !== $return_render && '' !== $ob_render ) {
+				_doing_it_wrong( __FUNCTION__, __( 'Partial render must echo the content or return the content string, but not both.' ), '4.5.0' );
+			}
+
+			// Note that the string return takes precedence because the $ob_render may just include PHP warnings or notices.
+			if ( null !== $return_render ) {
+				$render = $return_render;
+			} else {
 				$render = $ob_render;
 			}
 		}
@@ -191,6 +208,7 @@ class WP_Customize_Partial {
 		$exports['settings'] = $this->settings;
 		$exports['primary_setting'] = $this->primary_setting;
 		$exports['selector'] = $this->selector;
+		$exports['type'] = $this->type;
 		return $exports;
 	}
 }

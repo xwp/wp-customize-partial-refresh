@@ -27,6 +27,7 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
 		$this->plugin = $plugin;
+		require_once __DIR__ . '/class-wp-customize-partial.php';
 		add_action( 'after_setup_theme', array( $this, 'init' ), 11 );
 	}
 
@@ -127,7 +128,6 @@ class WP_Customize_Selective_Refresh {
 	public function init_preview() {
 		add_action( 'template_redirect', array( $this, 'render_partial' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
-		add_action( 'wp_print_footer_scripts', array( $this, 'export_preview_data' ) );
 	}
 
 	/**
@@ -156,10 +156,14 @@ class WP_Customize_Selective_Refresh {
 	 */
 	function enqueue_preview_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-preview'] );
+
+		$this->export_preview_data();
 	}
 
 	/**
 	 * Export data for the Customizer preview.
+	 *
+	 * @todo Defer this to footer so that partials can be registered during page render? But then how would Ajax request be able to recognize it?
 	 */
 	function export_preview_data() {
 
@@ -171,15 +175,25 @@ class WP_Customize_Selective_Refresh {
 		$exports = array(
 			'partials'       => $partials,
 			'renderQueryVar' => self::PARTIAL_RENDER_QUERY_VAR,
+
+			// @todo Remove once #35616 is committed to Core.
+			'dirtySettings'  => array_keys( $this->manager->unsanitized_post_values() ),
+
+			// @todo Remove once #35617 is committed to Core.
 			'requestUri'     => empty( $_SERVER['REQUEST_URI'] ) ? home_url( '/' ) : esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ),
 			'theme'          => array(
 				'stylesheet' => $this->manager->get_stylesheet(),
 				'active'     => $this->manager->is_theme_active(),
 			),
-			'previewNonce'   => wp_create_nonce( 'preview-customize_' . $this->manager->get_stylesheet() ), // @todo This needs to get updated when re-login or noncerefresh.
+			'previewNonce'   => wp_create_nonce( 'preview-customize_' . $this->manager->get_stylesheet() ),
 		);
 
-		printf( 'var _customizeSelectiveRefreshExports = %s;', wp_json_encode( $exports ) );
+		// Export data to JS.
+		wp_scripts()->add_data(
+			$this->plugin->script_handles['selective-refresh-preview'],
+			'data',
+			sprintf( 'var _customizeSelectiveRefreshExports = %s;', wp_json_encode( $exports ) )
+		);
 	}
 
 	/**
@@ -201,17 +215,13 @@ class WP_Customize_Selective_Refresh {
 		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
 			status_header( 403 );
 			wp_send_json_error( 'expected_customize_preview' );
-		} else if ( ! isset( $_POST['partial_ids'] ) ) {
+		} else if ( ! isset( $_POST['partial_id'] ) ) {
 			status_header( 400 );
-			wp_send_json_error( 'missing_partial_ids' );
-		} else if ( ! is_array( $_POST['partial_ids'] ) ) {
-			status_header( 400 );
-			wp_send_json_error( 'bad_partial_ids' );
+			wp_send_json_error( 'missing_partials' );
 		}
 
 		$results = array();
-
-		$partial_ids = wp_unslash( $_POST['partial_ids'] );
+		$partial_ids = (array) wp_unslash( $_POST['partial_id'] );
 		foreach ( $partial_ids as $partial_id ) {
 			$partial = $this->get_partial( $partial_id );
 			if ( ! $partial ) {
