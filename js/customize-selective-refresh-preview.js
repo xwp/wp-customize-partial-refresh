@@ -126,7 +126,9 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			}
 
 			// @todo The debounce here is a fail because this class needs to be added immediately, followed by the debounced Ajax request.
-			partial.findContainers().addClass( 'customize-partial-refreshing' );
+			partial.findContainers().each( function() {
+				partial.prepareSelectiveRefreshContainer( $( this ) );
+			} );
 
 			data = $.extend(
 				partial.getCustomizeQuery(),
@@ -142,11 +144,17 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			} );
 
 			partial.currentRequest.done( function( data ) {
-				var partialData = data[ partial.id ];
-				if ( ! _.isObject( partialData ) || partialData.error ) {
-					partial.handleRenderFail( _.extend( { error: 'fail' }, partialData ) );
+				var partialResponse = data[ partial.id ], error;
+				if ( ! _.isObject( partialResponse ) || _.isUndefined( partialResponse.data ) ) {
+					error = 'fail';
+				} else if ( partialResponse.error ) {
+					error = partialResponse.error;
+				}
+
+				if ( error ) {
+					partial.handleRenderFail( error );
 				} else {
-					partial.handleRenderSuccess( partialData );
+					partial.handleRenderSuccess( partialResponse.data );
 				}
 			} );
 			partial.currentRequest.fail( function( jqXHR, textStatus, errorThrown ) {
@@ -155,11 +163,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				if ( 'abort' === textStatus ) {
 					return;
 				}
-				partial.handleRenderFail( {
-					error: errorThrown ? errorThrown.message : textStatus,
-					errorThrown: errorThrown,
-					jqXHR: jqXHR
-				} );
+				partial.handleRenderFail( errorThrown ? errorThrown.message : textStatus );
 			} );
 		}, self.data.refreshBuffer ),
 
@@ -175,41 +179,59 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * Handle successful response to
 		 *
-		 * @param response
+		 * @param {string} rendered
 		 */
-		handleRenderSuccess: function( response ) {
+		handleRenderSuccess: function( rendered ) {
 			var partial = this;
+			rendered = rendered || '';
 
 			// @todo Trigger event which allows custom rendering to be aborted, to force a refresh? Or rather just implement subclassed Partial classes?
 
-			if ( ! partial.canSelectiveRefresh( response ) ) {
+			if ( ! partial.canSelectiveRefresh( rendered ) ) {
 				partial.requestFullRefresh();
 				return;
 			}
 
 			partial.findContainers().each( function() {
-				var container = $( this ), rendered;
-				rendered = response.data;
-
-				// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
-				// @todo Initialize the MediaElement.js player for any posts not previously initialized
-				// @todo Will Jetpack do this for us as well?
-				if ( wp && wp.emoji && wp.emoji.parse ) {
-					rendered = wp.emoji.parse( rendered );
+				if ( false === partial.selectiveRefresh( $( this ), rendered ) ) {
+					partial.requestFullRefresh();
 				}
-				container.html( rendered );
-
-				partial.renderMediaElements( container );
-
-				container.removeClass( 'customize-partial-refreshing' );
 			} );
+
+			// @todo Subclass can invoke custom functionality to handle the rendering of the response here
+		},
+
+		prepareSelectiveRefreshContainer: function( container ) {
+			container.addClass( 'customize-partial-refreshing' );
+		},
+
+		/**
+		 * Inject the rendered partial into the selected container.
+		 *
+		 * @param {jQuery} container
+		 * @param {string} rendered
+		 * @return {boolean} Whether the selective refresh was successful. If false, then a full refresh will be requested.
+		 */
+		selectiveRefresh: function( container, rendered ) {
+			var partial = this;
+
+			// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
+			// @todo Initialize the MediaElement.js player for any posts not previously initialized
+			// @todo Will Jetpack do this for us as well?
+			if ( wp && wp.emoji && wp.emoji.parse ) {
+				rendered = wp.emoji.parse( rendered );
+			}
+			container.html( rendered );
+			partial.renderMediaElements( container );
+			container.removeClass( 'customize-partial-refreshing' );
+
+			return true;
 		},
 
 		/**
 		 * Handle fail to render partial.
 		 *
-		 * @param {object} response
-		 * @param {string} response.error
+		 * @param {string} error
 		 */
 		handleRenderFail: function() {
 			var partial = this;
@@ -219,13 +241,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * Return whether the partial render response can be selectively refreshed.
 		 *
-		 * @param {object} response
-		 * @param {string} [response.error]
-		 * @param {string} [response.data]
+		 * @param {string} rendered
 		 * @returns {boolean}
 		 */
-		canSelectiveRefresh: function( response ) {
-			return response && ! response.error;
+		canSelectiveRefresh: function() {
+			return true;
 		},
 
 		// @todo ? shouldFullRefresh: function( response ) {},
