@@ -70,7 +70,17 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * Set up the partial.
 		 */
-		ready: function() {},
+		ready: function() {
+			var partial = this;
+			partial.findContainers().attr( 'title', 'Shift-click to edit this element.' ); // @todo Localize.
+			$( document ).on( 'click', partial.params.selector, function( e ) {
+				if ( ! e.shiftKey ) {
+					return;
+				}
+				e.preventDefault();
+				partial.showControl();
+			} );
+		},
 
 		/**
 		 * Find all elements by the selector.
@@ -99,6 +109,19 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
+		 * Show the control to modify this partial's setting(s).
+		 *
+		 * This may be overridden for inline editing.
+		 */
+		showControl: function() {
+			var partial = this, settingId = partial.params.primarySetting;
+			if ( ! settingId ) {
+				settingId = _.first( partial.settings() );
+			}
+			api.preview.send( 'focus-control-for-setting', settingId );
+		},
+
+		/**
 		 * Get the POST vars for a Customizer preview request.
 		 *
 		 * @see wp.customize.previewer.query()
@@ -121,6 +144,13 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
+		 * Logic to invoke before starting to to update a partial.
+		 *
+		 * @todo Should this be included? Or just let subclasses wrap update()?
+		 */
+		beforeUpdate: function() {},
+
+		/**
 		 * Request the new partial and render it into the containers.
 		 *
 		 * @todo Break this up into a request() and render() methods
@@ -136,6 +166,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partial.currentRequest.abort();
 				partial.currentRequest = null;
 			}
+
+			partial.beforeUpdate();
 
 			// @todo The debounce here is a fail because this class needs to be added immediately, followed by the debounced Ajax request.
 			partial.findContainers().each( function() {
