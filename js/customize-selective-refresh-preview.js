@@ -57,8 +57,20 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partial.defaults
 			) );
 
+			partial.deferred = {};
+			partial.deferred.ready = $.Deferred();
+
+			partial.deferred.ready.done( function() {
+				partial.ready();
+			} );
+
 			// @todo Add templateSelector? Add container? No, these can be added by subclasses and used optionally.
 		},
+
+		/**
+		 * Set up the partial.
+		 */
+		ready: function() {},
 
 		/**
 		 * Find all elements by the selector.
@@ -177,7 +189,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Handle successful response to
+		 * Handle successful response to render a partial.
 		 *
 		 * @param {string} rendered
 		 */
@@ -193,7 +205,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			}
 
 			partial.findContainers().each( function() {
-				if ( false === partial.selectiveRefresh( $( this ), rendered ) ) {
+				var selectiveRefreshSuccess = partial.selectiveRefresh( $( this ), rendered );
+				if ( false === selectiveRefreshSuccess ) {
 					partial.requestFullRefresh();
 				}
 			} );
@@ -201,6 +214,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			// @todo Subclass can invoke custom functionality to handle the rendering of the response here
 		},
 
+		/**
+		 * Prepare containers for selective refresh.
+		 *
+		 * @param {jQuery} container
+		 */
 		prepareSelectiveRefreshContainer: function( container ) {
 			container.addClass( 'customize-partial-refreshing' );
 		},
@@ -320,7 +338,19 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			} );
 		} );
 
-		self.ready.resolve();
+		api.preview.bind( 'active', function() {
+
+			// Make all partials ready.
+			self.partial.each( function( partial ) {
+				partial.deferred.ready.resolve();
+			} );
+
+			// Make all partials added henceforth as ready upon add.
+			self.partial.bind( 'add', function( partial ) {
+				partial.deferred.ready.resolve();
+			} );
+		} );
+
 	} );
 
 	return self;
