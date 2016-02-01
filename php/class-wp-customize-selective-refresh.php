@@ -175,17 +175,6 @@ class WP_Customize_Selective_Refresh {
 		$exports = array(
 			'partials'       => $partials,
 			'renderQueryVar' => self::PARTIAL_RENDER_QUERY_VAR,
-
-			// @todo Remove once #35616 is committed to Core.
-			'dirtySettings'  => array_keys( $this->manager->unsanitized_post_values() ),
-
-			// @todo Remove once #35617 is committed to Core.
-			'requestUri'     => empty( $_SERVER['REQUEST_URI'] ) ? home_url( '/' ) : esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ),
-			'theme'          => array(
-				'stylesheet' => $this->manager->get_stylesheet(),
-				'active'     => $this->manager->is_theme_active(),
-			),
-			'previewNonce'   => wp_create_nonce( 'preview-customize_' . $this->manager->get_stylesheet() ),
 		);
 
 		// Export data to JS.
@@ -219,6 +208,8 @@ class WP_Customize_Selective_Refresh {
 			status_header( 400 );
 			wp_send_json_error( 'missing_partials' );
 		}
+
+		// @todo Do wp_enqueue_scripts() so that we can gather the enqueued scripts and return them in the response?
 
 		$results = array();
 		$partial_ids = (array) wp_unslash( $_POST['partial_id'] );
@@ -259,8 +250,13 @@ class WP_Customize_Selective_Refresh {
 
 			$results[ $partial_id ] = array(
 				'data' => $rendered,
+				// @todo scripts?
+				// @todo styles?
 			);
 		}
+
+		// @todo Export scripts from wp_scripts()->queue? These are dangerous because of document.write(); we'd need to override the default implementation.
+		// @todo This may be out of scope and should instead be handled when a partial is registered.
 
 		wp_send_json_success( $results );
 	}
