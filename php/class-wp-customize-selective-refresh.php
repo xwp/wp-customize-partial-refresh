@@ -61,6 +61,7 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @todo This would be added to WP_Customize_Manager.
 	 *
+	 * @since 4.5.0
 	 * @access public
 	 *
 	 * @param WP_Customize_Partial|string $id   Customize Partial object, or Panel ID.
@@ -91,6 +92,7 @@ class WP_Customize_Selective_Refresh {
 	 * Retrieve a customize partial.
 	 *
 	 * @since 4.5.0
+	 * @access public
 	 *
 	 * @param string $id Customize Partial ID.
 	 * @return WP_Customize_Partial|null The partial, if set.
@@ -107,6 +109,7 @@ class WP_Customize_Selective_Refresh {
 	 * Remove a customize partial.
 	 *
 	 * @since 4.5.0
+	 * @access public
 	 *
 	 * @param string $id Customize Partial ID.
 	 */
@@ -117,7 +120,8 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Initialize selective partial refresh.
 	 *
-	 * @action after_setup_theme
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function init() {
 		global $wp_customize;
@@ -143,7 +147,8 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Initialize Customizer preview.
 	 *
-	 * @action customize_preview_init
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function init_preview() {
 		add_action( 'template_redirect', array( $this, 'render_partials' ) );
@@ -153,7 +158,8 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Enqueue pane scripts.
 	 *
-	 * @action customize_controls_enqueue_scripts
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function enqueue_pane_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-pane'] );
@@ -172,7 +178,8 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Enqueue preview scripts.
 	 *
-	 * @action wp_enqueue_scripts
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function enqueue_preview_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-preview'] );
@@ -182,6 +189,9 @@ class WP_Customize_Selective_Refresh {
 
 	/**
 	 * Export data in preview after it has finished rendering so that partials can be added at runtime.
+	 *
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function export_preview_data() {
 
@@ -230,7 +240,7 @@ class WP_Customize_Selective_Refresh {
 		 * to override the default false value with an array of args to pass to
 		 * the WP_Customize_Setting constructor.
 		 *
-		 * @since 4.2.0
+		 * @since 4.5.0
 		 *
 		 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
 		 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
@@ -243,7 +253,7 @@ class WP_Customize_Selective_Refresh {
 		/**
 		 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
 		 *
-		 * @since 4.2.0
+		 * @since 4.5.0
 		 *
 		 * @param string $partial_class WP_Customize_Setting or a subclass.
 		 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
@@ -260,7 +270,8 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Ajax request to return the settings partial value.
 	 *
-	 * @action template_redirect
+	 * @since 4.5.0
+	 * @access public
 	 */
 	public function render_partials() {
 		if ( ! isset( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
