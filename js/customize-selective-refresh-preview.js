@@ -215,6 +215,10 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return;
 			}
+			if ( ! container.element ) {
+				partial.fallback( new Error( 'null_content' ), [ container ] );
+				return;
+			}
 			content = container.content;
 
 			// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
@@ -432,13 +436,18 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					 * and send them into .
 					 */
 					_.each( self._pendingPartialRequests, function( pending, partialId ) {
-						var containersContents = _.map( data.contents[ partialId ], function( content, i ) {
-							return _.extend(
-								partialsContainers[ partialId ][ i ] || {}, // Note that {} means no containers were selected, partial.fallback() likely to be called.
-								{ content: content }
-							);
-						} );
-						pending.deferred.resolveWith( pending.partial, [ containersContents ] );
+						var containersContents;
+						if ( null === data.contents[ partialId ] ) {
+							pending.deferred.rejectWith( pending.partial, [ new Error( 'null_contents' ), partialsContainers[ partialId ] ] );
+						} else {
+							containersContents = _.map( data.contents[ partialId ], function( content, i ) {
+								return _.extend(
+									partialsContainers[ partialId ][ i ] || {}, // Note that {} means no containers were selected, partial.fallback() likely to be called.
+									{ content: content }
+								);
+							} );
+							pending.deferred.resolveWith( pending.partial, [ containersContents ] );
+						}
 					} );
 				} );
 
