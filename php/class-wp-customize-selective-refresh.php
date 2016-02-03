@@ -118,6 +118,18 @@ class WP_Customize_Selective_Refresh {
 		}
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
+		add_action( 'customize_register', array( $this, 'disable_core_nav_menu_refresh' ) );
+	}
+
+	/**
+	 * Disable nav menu partial refresh as bundled in Core.
+	 *
+	 * @param WP_Customize_Manager $wp_customize Manager.
+	 */
+	public function disable_core_nav_menu_refresh( $wp_customize ) {
+		if ( ! empty( $wp_customize->nav_menus ) ) {
+			remove_action( 'customize_preview_init', array( $wp_customize->nav_menus, 'customize_preview_init' ) );
+		}
 	}
 
 	/**
