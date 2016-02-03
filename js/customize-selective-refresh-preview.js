@@ -118,6 +118,23 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
+		 * Return whether the setting is related to the partial.
+		 *
+		 * @param {wp.customize.Value|string} setting  ID or object for setting.
+		 * @return {boolean} Whether the setting is related to the partial.
+		 */
+		isRelatedSetting: function( setting ) {
+			var partial = this;
+			if ( _.isString( setting ) ) {
+				setting = api( setting );
+			}
+			if ( ! setting ) {
+				return false;
+			}
+			return -1 !== _.indexOf( partial.settings(), setting.id );
+		},
+
+		/**
 		 * Show the control to modify this partial's setting(s).
 		 *
 		 * This may be overridden for inline editing.
@@ -459,7 +476,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		// Trigger update for each partial that is associated with a changed setting.
 		api.bind( 'change', function( setting ) {
 			self.partial.each( function( partial ) {
-				if ( -1 !== _.indexOf( partial.settings(), setting.id ) ) {
+				if ( partial.isRelatedSetting( setting ) ) {
 					partial.update();
 				}
 			} );
