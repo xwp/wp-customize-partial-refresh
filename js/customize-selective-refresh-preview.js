@@ -14,8 +14,6 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		currentRequest: null
 	};
 
-	_.extend( self.data, _customizeSelectiveRefreshExports );
-
 	/**
 	 * A Customizer Partial.
 	 *
@@ -168,7 +166,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		 * @todo Batch requests. This is not a concern for caching because Customizer preview responses aren't cached anyway.
 		 * @todo Debounce and return promise.
 		 */
-		update: function() {
+		refresh: function() {
 			var partial = this;
 
 			// @todo The containers may contain additional contextual information that need to be passed along in the request
@@ -189,8 +187,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					partial.renderContent( container );
 				} );
 			} );
-			partial._pendingUpdatePromise.fail( function( data ) {
-				partial.fallback( data );
+			partial._pendingUpdatePromise.fail( function( data, containers ) {
+				partial.fallback( data, containers );
 			} );
 
 			// Allow new request when this one finishes.
@@ -204,15 +202,17 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * Prepare containers for selective refresh.
 		 *
+		 * @todo Change args to be positional for closer parity with render filters? $rendered, $partial, $container_context
+		 *
 		 * @param {object} container
-		 * @param {jQuery} [container.element] - This param will be empty if there was no.
+		 * @param {jQuery} [container.element] - This param will be empty if there was no element matching the selector.
 		 * @param {string} container.content   - Rendered HTML content.
 		 * @param {object} [container.context] - Optional context information about the container.
 		 */
 		renderContent: function( container ) {
 			var partial = this, content;
 			if ( ! container.element ) {
-				partial.fallback( container );
+				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return;
 			}
 			content = container.content;
@@ -274,6 +274,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 		/**
 		 * Handle fail to render partial.
+		 *
+		 * The first argument is either the failing jqXHR or an Error object, and the second argument is the array of containers.
 		 */
 		fallback: function() {
 			var partial = this;
@@ -300,6 +302,13 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	self.partialConstructor = {};
 
 	self.partial = new api.Values({ defaultConstructor: self.Partial });
+
+
+	self.NavMenuPartial = self.Partial.extend({
+
+	});
+
+	self.partialConstructor.nav_menu = self.NavMenuPartial;
 
 	/**
 	 * Get the POST vars for a Customizer preview request.
@@ -389,8 +398,9 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 				partialContainerContexts = {};
 				_.each( self._pendingPartialRequests, function( pending, partialId ) {
+					partialsContainers[ partialId ] = pending.partial.containers();
 					if ( ! self.partial.has( partialId ) ) {
-						pending.deferred.rejectWith( pending.partial, [ { error: 'partial_removed' } ] ); // @todo Make same error format as rejectWith below?
+						pending.deferred.rejectWith( pending.partial, [ new Error( 'partial_removed' ), partialsContainers[ partialId ] ] );
 					} else {
 						/*
 						 * Note that this may in fact be an empty array. In that case, it is the responsibility
@@ -399,7 +409,6 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 						 * is the context information that may be needed to render certain partials, such as
 						 * the contained sidebar for rendering widgets or what the nav menu args are for a menu.
 						 */
-						partialsContainers[ partialId ] = pending.partial.containers();
 						partialContainerContexts[ partialId ] = _.map( partialsContainers[ partialId ], function( container ) {
 							return container.context || {};
 						} );
@@ -461,6 +470,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 	api.bind( 'preview-ready', function() {
 
+		_.extend( self.data, _customizeSelectiveRefreshExports );
+
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
 			var Constructor, partial = self.partial( id );
@@ -477,7 +488,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		api.bind( 'change', function( setting ) {
 			self.partial.each( function( partial ) {
 				if ( partial.isRelatedSetting( setting ) ) {
-					partial.update();
+					partial.refresh();
 				}
 			} );
 		} );

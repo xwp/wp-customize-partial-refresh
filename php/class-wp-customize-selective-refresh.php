@@ -72,7 +72,15 @@ class WP_Customize_Selective_Refresh {
 		if ( $id instanceof WP_Customize_Partial ) {
 			$partial = $id;
 		} else {
-			$partial = new WP_Customize_Partial( $this->plugin, $id, $args );
+			$class = 'WP_Customize_Partial';
+
+			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
+			$args = apply_filters( 'customize_dynamic_partial_args', $args, $id );
+
+			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
+			$class = apply_filters( 'customize_dynamic_partial_class', $class, $id, $args );
+
+			$partial = new $class( $this->plugin, $id, $args );
 		}
 
 		$this->partials[ $partial->id ] = $partial;
@@ -147,7 +155,7 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @action customize_controls_enqueue_scripts
 	 */
-	function enqueue_pane_scripts() {
+	public function enqueue_pane_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-pane'] );
 
 		// Script data array.
@@ -166,8 +174,16 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @action wp_enqueue_scripts
 	 */
-	function enqueue_preview_scripts() {
+	public function enqueue_preview_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-preview'] );
+
+		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
+	}
+
+	/**
+	 * Export data in preview after it has finished rendering so that partials can be added at runtime.
+	 */
+	public function export_preview_data() {
 
 		$partials = array();
 		foreach ( $this->partials() as $partial ) {
@@ -183,11 +199,62 @@ class WP_Customize_Selective_Refresh {
 		);
 
 		// Export data to JS.
-		wp_scripts()->add_data(
-			$this->plugin->script_handles['selective-refresh-preview'],
-			'data',
-			sprintf( 'var _customizeSelectiveRefreshExports = %s;', wp_json_encode( $exports ) )
-		);
+		echo sprintf( '<script>var _customizeSelectiveRefreshExports = %s;</script>', wp_json_encode( $exports ) );
+	}
+
+	/**
+	 * Register dynamically-created partial.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 * @see WP_Customize_Manager::add_dynamic_settings()
+	 *
+	 * @param string $partial_id         The partial ID to add.
+	 * @return WP_Customize_Partial|null The instance or null if no filters applied.
+	 */
+	public function add_dynamic_partial( $partial_id ) {
+
+		// Skip partials already created.
+		$partial = $this->get_partial( $partial_id );
+		if ( $partial ) {
+			return $partial;
+		}
+
+		$partial_args = false;
+		$partial_class = 'WP_Customize_Partial';
+
+		/**
+		 * Filter a dynamic partial's constructor args.
+		 *
+		 * For a dynamic partial to be registered, this filter must be employed
+		 * to override the default false value with an array of args to pass to
+		 * the WP_Customize_Setting constructor.
+		 *
+		 * @since 4.2.0
+		 *
+		 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
+		 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
+		 */
+		$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
+		if ( false === $partial_args ) {
+			return null;
+		}
+
+		/**
+		 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
+		 *
+		 * @since 4.2.0
+		 *
+		 * @param string $partial_class WP_Customize_Setting or a subclass.
+		 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
+		 * @param array  $partial_args  WP_Customize_Setting or a subclass.
+		 */
+		$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
+
+		$partial = new $partial_class( $this, $partial_id, $partial_args );
+
+		$this->add_partial( $partial );
+		return $partial;
 	}
 
 	/**
@@ -225,12 +292,17 @@ class WP_Customize_Selective_Refresh {
 			if ( ! is_array( $container_contexts ) ) {
 				wp_send_json_error( 'malformed_container_contexts' );
 			}
-			$contents[ $partial_id ] = array();
+
 			$partial = $this->get_partial( $partial_id );
 			if ( ! $partial ) {
-				wp_send_json_error( 'unrecognized_partial' );
+				$partial = $this->add_dynamic_partial( $partial_id );
+			}
+			if ( ! $partial ) {
+				$contents[ $partial_id ] = null;
+				continue;
 			}
 
+			$contents[ $partial_id ] = array();
 			if ( empty( $container_contexts ) ) {
 				// Since there are no container contexts, render just once.
 				$contents[ $partial_id ][] = $partial->render( null );
