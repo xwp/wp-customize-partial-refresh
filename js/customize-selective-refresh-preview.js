@@ -8,7 +8,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		data: {
 			partials: {},
 			renderQueryVar: '',
-			requestUri: '',
+			l10n: {},
 			refreshBuffer: 25 // @todo Increase to 250
 		},
 		currentRequest: null
@@ -33,10 +33,10 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	 * @param {string} options.params.selector         jQuery selector to find the container element in the page.
 	 * @param {array}  options.params.settings         The IDs for the settings the partial relates to.
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
-	 *
-	 * @todo @param {string} options.params.template?          The underscore template to render?
 	 */
 	self.Partial = api.Class.extend({
+
+		id: null,
 
 		defaults: {
 			type: 'default',
@@ -50,7 +50,6 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			options = options || {};
 			partial.id = id;
 			partial.params = {};
-			partial.requestDeferreds = [];
 
 			$.extend( partial.params, _.defaults(
 				options.params || {},
@@ -72,7 +71,9 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		 */
 		ready: function() {
 			var partial = this;
-			partial.findContainers().attr( 'title', 'Shift-click to edit this element.' ); // @todo Localize.
+			_.each( _.pluck( partial.containers(), 'element' ), function( element ) {
+				element.attr( 'title', self.data.l10n.shiftClickToEdit );
+			} );
 			$( document ).on( 'click', partial.params.selector, function( e ) {
 				if ( ! e.shiftKey ) {
 					return;
@@ -83,19 +84,27 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Find all elements by the selector.
+		 * Find all elements by the selector and return along with any context data supplied on the container.
 		 *
-		 * @return {jQuery}
+		 * @todo Rename this to instances()?
+		 *
+		 * @return {Array.<Object>}
 		 */
-		findContainers: function() {
+		containers: function() {
 			var partial = this;
-			return $( partial.params.selector );
+			return $( partial.params.selector ).map( function() {
+				var container = $( this );
+				return {
+					element: container,
+					context: container.data( 'customize-container-context' )
+				};
+			} );
 		},
 
 		/**
 		 * Get list of setting IDs related to this partial.
 		 *
-		 * @returns {Array}
+		 * @return {String[]}
 		 */
 		settings: function() {
 			var partial = this;
@@ -122,183 +131,88 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Get the POST vars for a Customizer preview request.
-		 *
-		 * @see wp.customize.previewer.query()
-		 * @return {object}
+		 * Prepare container for selective refresh.
 		 */
-		getCustomizeQuery: function() {
-			var dirtyCustomized = {};
-			api.each( function( value, key ) {
-				if ( value._dirty ) {
-					dirtyCustomized[ key ] = value();
-				}
-			} );
-
-			return {
-				wp_customize: 'on',
-				nonce: api.settings.nonce.preview,
-				theme: api.settings.theme.stylesheet,
-				customized: JSON.stringify( dirtyCustomized )
-			};
+		prepareContainer: function( container ) {
+			container.element.addClass( 'customize-partial-refreshing' );
 		},
 
 		/**
-		 * Logic to invoke before starting to to update a partial.
-		 *
-		 * @todo Should this be included? Or just let subclasses wrap update()?
+		 * @private
 		 */
-		beforeUpdate: function() {},
+		_pendingUpdatePromise: null,
 
 		/**
 		 * Request the new partial and render it into the containers.
+		 *
+		 * @return {jQuery.Promise}
 		 *
 		 * @todo Break this up into a request() and render() methods
 		 * @todo Batch requests. This is not a concern for caching because Customizer preview responses aren't cached anyway.
 		 * @todo Debounce and return promise.
 		 */
-		update: _.debounce( function() {
-			var partial = this, data;
+		update: function() {
+			var partial = this;
 
+			// @todo The containers may contain additional contextual information that need to be passed along in the request
 			// @todo partial.requestDeferreds
 
-			if ( partial.currentRequest ) {
-				partial.currentRequest.abort();
-				partial.currentRequest = null;
+			if ( partial._pendingUpdatePromise ) {
+				return partial._pendingUpdatePromise;
 			}
 
-			partial.beforeUpdate();
-
-			// @todo The debounce here is a fail because this class needs to be added immediately, followed by the debounced Ajax request.
-			partial.findContainers().each( function() {
-				partial.prepareSelectiveRefreshContainer( $( this ) );
+			_.each( partial.containers(), function( container ) {
+				partial.prepareContainer( container );
 			} );
 
-			data = $.extend(
-				partial.getCustomizeQuery(),
-				{
-					partial_id: [ partial.id ]
-				}
-			);
-			data[ self.data.renderQueryVar ] = '1';
+			partial._pendingUpdatePromise = self.requestPartial( partial );
 
-			partial.currentRequest = wp.ajax.send( null, {
-				data: data,
-				url: api.settings.url.self
+			partial._pendingUpdatePromise.done( function( containers ) {
+				_.each( containers, function( container ) {
+					partial.renderContent( container );
+				} );
+			} );
+			partial._pendingUpdatePromise.fail( function( data ) {
+				partial.fallback( data );
 			} );
 
-			partial.currentRequest.done( function( data ) {
-				var partialResponse = data[ partial.id ], error;
-				if ( ! _.isObject( partialResponse ) || _.isUndefined( partialResponse.data ) ) {
-					error = 'fail';
-				} else if ( partialResponse.error ) {
-					error = partialResponse.error;
-				}
-
-				if ( error ) {
-					partial.handleRenderFail( error );
-				} else {
-					partial.handleRenderSuccess( partialResponse.data );
-				}
-			} );
-			partial.currentRequest.fail( function( jqXHR, textStatus, errorThrown ) {
-
-				// Ignore failures caused by partial.currentRequest.abort()
-				if ( 'abort' === textStatus ) {
-					return;
-				}
-				partial.handleRenderFail( errorThrown ? errorThrown.message : textStatus );
-			} );
-		}, self.data.refreshBuffer ),
-
-		/**
-		 * Request full page refresh.
-		 *
-		 * @todo When selective refresh is embedded in the context of frontend editing, this request must fail or else changes will be lost, unless transactions are implemented.
-		 */
-		requestFullRefresh: function() {
-			api.preview.send( 'refresh' );
-		},
-
-		/**
-		 * Handle successful response to render a partial.
-		 *
-		 * @param {string} rendered
-		 */
-		handleRenderSuccess: function( rendered ) {
-			var partial = this;
-			rendered = rendered || '';
-
-			// @todo Trigger event which allows custom rendering to be aborted, to force a refresh? Or rather just implement subclassed Partial classes?
-
-			if ( ! partial.canSelectiveRefresh( rendered ) ) {
-				partial.requestFullRefresh();
-				return;
-			}
-
-			partial.findContainers().each( function() {
-				var selectiveRefreshSuccess = partial.selectiveRefresh( $( this ), rendered );
-				if ( false === selectiveRefreshSuccess ) {
-					partial.requestFullRefresh();
-				}
+			// Allow new request when this one finishes.
+			partial._pendingUpdatePromise.always( function() {
+				partial._pendingUpdatePromise = null;
 			} );
 
-			// @todo Subclass can invoke custom functionality to handle the rendering of the response here
+			return partial._pendingUpdatePromise;
 		},
 
 		/**
 		 * Prepare containers for selective refresh.
 		 *
-		 * @param {jQuery} container
+		 * @param {object} container
+		 * @param {jQuery} [container.element] - This param will be empty if there was no.
+		 * @param {string} container.content   - Rendered HTML content.
+		 * @param {object} [container.context] - Optional context information about the container.
 		 */
-		prepareSelectiveRefreshContainer: function( container ) {
-			container.addClass( 'customize-partial-refreshing' );
-		},
-
-		/**
-		 * Inject the rendered partial into the selected container.
-		 *
-		 * @param {jQuery} container
-		 * @param {string} rendered
-		 * @return {boolean} Whether the selective refresh was successful. If false, then a full refresh will be requested.
-		 */
-		selectiveRefresh: function( container, rendered ) {
-			var partial = this;
+		renderContent: function( container ) {
+			var partial = this, content;
+			if ( ! container.element ) {
+				partial.fallback( container );
+				return;
+			}
+			content = container.content;
 
 			// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
 			// @todo Initialize the MediaElement.js player for any posts not previously initialized
 			// @todo Will Jetpack do this for us as well?
 			if ( wp && wp.emoji && wp.emoji.parse ) {
-				rendered = wp.emoji.parse( rendered );
+				content = wp.emoji.parse( content );
 			}
-			container.html( rendered );
-			partial.renderMediaElements( container );
-			container.removeClass( 'customize-partial-refreshing' );
 
-			return true;
+			container.element.html( content );
+
+			partial.setupMediaElements( container.element, content );
+
+			container.element.removeClass( 'customize-partial-refreshing' );
 		},
-
-		/**
-		 * Handle fail to render partial.
-		 *
-		 * @param {string} error
-		 */
-		handleRenderFail: function() {
-			var partial = this;
-			partial.requestFullRefresh();
-		},
-
-		/**
-		 * Return whether the partial render response can be selectively refreshed.
-		 *
-		 * @param {string} rendered
-		 * @returns {boolean}
-		 */
-		canSelectiveRefresh: function() {
-			return true;
-		},
-
-		// @todo ? shouldFullRefresh: function( response ) {},
 
 		/**
 		 * Adapted from Scroller.prototype.initializeMejs in Jetpack Infinite Scroll module
@@ -309,7 +223,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		 * @param container
 		 * @param partialHtml
 		 */
-		renderMediaElements: function( container, partialHtml ) {
+		setupMediaElements: function( container, partialHtml ) {
 			var settings = {};
 
 			// Are there media players in the incoming set of posts?
@@ -339,13 +253,194 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			};
 
 			container.find( '.wp-audio-shortcode, .wp-video-shortcode' ).not( '.mejs-container' ).mediaelementplayer( settings );
+		},
+
+		/**
+		 * Handle fail to render partial.
+		 */
+		fallback: function() {
+			var partial = this;
+			partial.requestFullRefresh();
+		},
+
+		/**
+		 * Request full page refresh.
+		 *
+		 * When selective refresh is embedded in the context of frontend editing, this request
+		 * must fail or else changes will be lost, unless transactions are implemented.
+		 */
+		requestFullRefresh: function() {
+			api.preview.send( 'refresh' );
 		}
 
 	} );
 
+	/**
+	 * Mapping of type names to Partial constructor subclasses.
+	 *
+	 * @type {Object.<string, self.Partial>}
+	 */
 	self.partialConstructor = {};
 
 	self.partial = new api.Values({ defaultConstructor: self.Partial });
+
+	/**
+	 * Get the POST vars for a Customizer preview request.
+	 *
+	 * @see wp.customize.previewer.query()
+	 * @return {object}
+	 */
+	self.getCustomizeQuery = function() {
+		var dirtyCustomized = {};
+		api.each( function( value, key ) {
+			if ( value._dirty ) {
+				dirtyCustomized[ key ] = value();
+			}
+		} );
+
+		return {
+			wp_customize: 'on',
+			nonce: api.settings.nonce.preview,
+			theme: api.settings.theme.stylesheet,
+			customized: JSON.stringify( dirtyCustomized )
+		};
+	};
+
+	/**
+	 * Currently-requested partials and their associated deferreds.
+	 *
+	 * @type {Object}
+	 */
+	self._pendingPartialRequests = {};
+
+	/**
+	 * Timeout ID for the current requesr, or null if no request is current.
+	 *
+	 * @type {number|null}
+	 * @private
+	 */
+	self._debouncedTimeoutId = null;
+
+	/**
+	 * Current jqXHR for the request to the partials.
+	 *
+	 * @type {jQuery.jqXHR|null}
+	 * @private
+	 */
+	self._currentPartialsRequest = null;
+
+	/**
+	 *
+	 * @param {self.Partial} partial
+	 * @return {jQuery.Promise}
+	 */
+	self.requestPartial = function( partial ) {
+		var partialRequest;
+
+		if ( self._debouncedTimeoutId ) {
+			clearTimeout( self._debouncedTimeoutId );
+			self._debouncedTimeoutId = null;
+		}
+		if ( self._currentPartialsRequest ) {
+			self._currentPartialsRequest.abort();
+			self._currentPartialsRequest = null;
+		}
+
+		partialRequest = self._pendingPartialRequests[ partial.id ];
+		if ( partialRequest ) {
+			return partialRequest.deferred.promise();
+		}
+
+		partialRequest = {
+			deferred: $.Deferred(),
+			partial: partial
+		};
+		self._pendingPartialRequests[ partial.id ] = partialRequest;
+
+		self._debouncedTimeoutId = setTimeout(
+			function() {
+				var data, partialContainerContexts, partialsContainers, request;
+
+				self._debouncedTimeoutId = null;
+				data = self.getCustomizeQuery();
+
+				/*
+				 * It is key that the containers be fetched exactly at the point of the request being
+				 * made, because the containers need to be mapped to responses by array indices.
+				 */
+				partialsContainers = {};
+
+				partialContainerContexts = {};
+				_.each( self._pendingPartialRequests, function( pending, partialId ) {
+					if ( ! self.partial.has( partialId ) ) {
+						pending.deferred.rejectWith( pending.partial, [ { error: 'partial_removed' } ] ); // @todo Make same error format as rejectWith below?
+					} else {
+						/*
+						 * Note that this may in fact be an empty array. In that case, it is the responsibility
+						 * of the Partial subclass instance to know where to inject the response, or else to
+						 * just issue a refresh (default behavior). The data being returned with each container
+						 * is the context information that may be needed to render certain partials, such as
+						 * the contained sidebar for rendering widgets or what the nav menu args are for a menu.
+						 */
+						partialsContainers[ partialId ] = pending.partial.containers();
+						partialContainerContexts[ partialId ] = _.map( partialsContainers[ partialId ], function( container ) {
+							return container.context || {};
+						} );
+					}
+				} );
+
+				data.partials = JSON.stringify( partialContainerContexts );
+				data[ self.data.renderQueryVar ] = '1';
+
+				request = self._pendingPartialsRequests = wp.ajax.send( null, {
+					data: data,
+					url: api.settings.url.self
+				} );
+
+				request.done( function( data ) {
+
+					/*
+					 * Note that data is an array of items that correspond to the array of
+					 * containers that were submitted in the request. So we zip up the
+					 * array of containers with the array of contents for those containers,
+					 * and send them into .
+					 */
+					_.each( self._pendingPartialRequests, function( pending, partialId ) {
+						var containersContents = _.map( data.contents[ partialId ], function( content, i ) {
+							return _.extend(
+								partialsContainers[ partialId ][ i ] || {}, // Note that {} means no containers were selected, partial.fallback() likely to be called.
+								{ content: content }
+							);
+						} );
+						pending.deferred.resolveWith( pending.partial, [ containersContents ] );
+					} );
+				} );
+
+				request.fail( function( data, statusText ) {
+
+					/*
+					 * Ignore failures caused by partial.currentRequest.abort()
+					 * The pending deferreds will remain in self._pendingPartialRequests
+					 * for re-use with the next request.
+					 */
+					if ( 'abort' === statusText ) {
+						return;
+					}
+
+					_.each( self._pendingPartialRequests, function( pending, partialId ) {
+						pending.deferred.rejectWith( pending.partial, [ data, partialsContainers[ partialId ] ] );
+					} );
+				} );
+
+				request.always( function() {
+					delete self._pendingPartialRequests[ partial.id ];
+				} );
+			},
+			self.data.refreshBuffer
+		);
+
+		return partialRequest.deferred.promise();
+	};
 
 	api.bind( 'preview-ready', function() {
 

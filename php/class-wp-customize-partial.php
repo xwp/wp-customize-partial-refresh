@@ -131,14 +131,16 @@ class WP_Customize_Partial {
 	 * Render the template partial involving the associated settings.
 	 *
 	 * @access public
+	 * @param array|null $container_context Optional array of context data associated with the target container.
+	 *
 	 * @todo How many mechanisms do we want to provide? render_callback, and filters, and overridable method?
 	 *
 	 * @return string|null The rendered partial, or null if no rendering applied.
 	 */
-	final public function render() {
+	final public function render( $container_context = null ) {
 		$partial = $this;
 
-		$render = null;
+		$rendered = null;
 		if ( ! empty( $this->render_callback ) ) {
 			ob_start();
 			$return_render = call_user_func( $this->render_callback, $this );
@@ -150,35 +152,31 @@ class WP_Customize_Partial {
 
 			// Note that the string return takes precedence because the $ob_render may just include PHP warnings or notices.
 			if ( null !== $return_render ) {
-				$render = $return_render;
+				$rendered = $return_render;
 			} else {
-				$render = $ob_render;
+				$rendered = $ob_render;
 			}
 		}
 
 		/**
-		 * Filter response of a partial's render_callback.
+		 * Filter partial rendering.
 		 *
-		 * Note that this filter may not be called if a WP_Customize_Parital subclass
-		 * implements its own render method.
-		 *
-		 * @param string|null          $render  Rendered partial.
-		 * @param WP_Customize_Control $partial WP_Customize_Control instance.
+		 * @param mixed                $rendered          The partial value. Default null.
+		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
+		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
-		$render = apply_filters( 'customize_partial_render', $render, $partial );
+		$rendered = apply_filters( 'customize_setting_render', $rendered, $partial, $container_context );
 
 		/**
-		 * Filter response of a partial's render_callback.
+		 * Filter partial rendering by the partial ID.
 		 *
-		 * Note that this filter may not be called if a WP_Customize_Partial subclass
-		 * implements its own render method.
-		 *
-		 * @param string|null          $render  Rendered partial.
-		 * @param WP_Customize_Control $partial WP_Customize_Control instance.
+		 * @param mixed                $rendered          The partial value. Default null.
+		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
+		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
-		$render = apply_filters( "customize_partial_render_{$partial->id}", $render, $partial );
+		$rendered = apply_filters( "customize_setting_render_{$partial->id}", $rendered, $partial, $container_context );
 
-		return $render;
+		return $rendered;
 	}
 
 	/**

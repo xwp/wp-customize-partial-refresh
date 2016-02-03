@@ -4,7 +4,7 @@
  */
 class WP_Customize_Selective_Refresh {
 
-	const PARTIAL_RENDER_QUERY_VAR = 'wp_customize_partial_render';
+	const RENDER_QUERY_VAR = 'wp_customize_partials_render';
 
 	/**
 	 * WP_Customize_Partial_Refresh_Plugin instance.
@@ -126,7 +126,7 @@ class WP_Customize_Selective_Refresh {
 	 * @action customize_preview_init
 	 */
 	public function init_preview() {
-		add_action( 'template_redirect', array( $this, 'render_partial' ) );
+		add_action( 'template_redirect', array( $this, 'render_partials' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
 	}
 
@@ -157,16 +157,6 @@ class WP_Customize_Selective_Refresh {
 	function enqueue_preview_scripts() {
 		wp_enqueue_script( $this->plugin->script_handles['selective-refresh-preview'] );
 
-		$this->export_preview_data();
-	}
-
-	/**
-	 * Export data for the Customizer preview.
-	 *
-	 * @todo Defer this to footer so that partials can be registered during page render? But then how would Ajax request be able to recognize it?
-	 */
-	function export_preview_data() {
-
 		$partials = array();
 		foreach ( $this->partials() as $partial ) {
 			$partials[ $partial->id ] = $partial->json();
@@ -174,7 +164,10 @@ class WP_Customize_Selective_Refresh {
 
 		$exports = array(
 			'partials'       => $partials,
-			'renderQueryVar' => self::PARTIAL_RENDER_QUERY_VAR,
+			'renderQueryVar' => self::RENDER_QUERY_VAR,
+			'l10n'           => array(
+				'shiftClickToEdit' => __( 'Shift-click to edit this element.' ),
+			),
 		);
 
 		// Export data to JS.
@@ -190,8 +183,8 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @action template_redirect
 	 */
-	public function render_partial() {
-		if ( ! isset( $_POST[ static::PARTIAL_RENDER_QUERY_VAR ] ) ) {
+	public function render_partials() {
+		if ( ! isset( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
 			return;
 		}
 
@@ -204,60 +197,44 @@ class WP_Customize_Selective_Refresh {
 		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
 			status_header( 403 );
 			wp_send_json_error( 'expected_customize_preview' );
-		} else if ( ! isset( $_POST['partial_id'] ) ) {
+		} else if ( ! isset( $_POST['partials'] ) ) {
 			status_header( 400 );
 			wp_send_json_error( 'missing_partials' );
+		}
+		$partials = json_decode( wp_unslash( $_POST['partials'] ), true );
+		if ( ! is_array( $partials ) ) {
+			wp_send_json_error( 'malformed_partials' );
 		}
 
 		// @todo Do wp_enqueue_scripts() so that we can gather the enqueued scripts and return them in the response?
 
-		$results = array();
-		$partial_ids = (array) wp_unslash( $_POST['partial_id'] );
-		foreach ( $partial_ids as $partial_id ) {
+		$contents = array();
+		foreach ( $partials as $partial_id => $container_contexts ) {
+			if ( ! is_array( $container_contexts ) ) {
+				wp_send_json_error( 'malformed_container_contexts' );
+			}
+			$contents[ $partial_id ] = array();
 			$partial = $this->get_partial( $partial_id );
 			if ( ! $partial ) {
-				$results[ $partial_id ] = array( 'error' => 'unrecognized_partial' );
-				continue;
+				wp_send_json_error( 'unrecognized_partial' );
 			}
 
-			$rendered = $partial->render();
-
-			/*
-			 * Note that the sanitized value of a given setting needn't be passed
-			 * back to the Customizer here because this will be handled in the transaction
-			 * PATCH request. Additionally, the rendering of a single raw setting value
-			 * is not relevant since we are only interested in rendering template
-			 * partials in which the setting is only a part. So the $rendered
-			 * here does directly correspond to the $partial->settings in the
-			 * sense of the REST API, although it is clearly related.
-			 */
-
-			/**
-			 * Filter partial rendering.
-			 *
-			 * @param mixed                $rendered The partial value. Default null.
-			 * @param WP_Customize_Partial $partial WP_Customize_Setting instance.
-			 */
-			$rendered = apply_filters( 'customize_setting_render', $rendered, $partial );
-
-			/**
-			 * Filter partial rendering by the partial ID.
-			 *
-			 * @param mixed                $rendered The partial value. Default null.
-			 * @param WP_Customize_Partial $partial WP_Customize_Setting instance.
-			 */
-			$rendered = apply_filters( "customize_setting_render_{$partial->id}", $rendered, $partial );
-
-			$results[ $partial_id ] = array(
-				'data' => $rendered,
-				// @todo scripts?
-				// @todo styles?
-			);
+			if ( empty( $container_contexts ) ) {
+				// Since there are no container contexts, render just once.
+				$contents[ $partial_id ][] = $partial->render( null );
+			} else {
+				foreach ( $container_contexts as $container_context ) {
+					$contents[ $partial_id ][] = $partial->render( $container_context );
+				}
+			}
 		}
 
+		$response = array(
+			'contents' => $contents,
+		);
 		// @todo Export scripts from wp_scripts()->queue? These are dangerous because of document.write(); we'd need to override the default implementation.
 		// @todo This may be out of scope and should instead be handled when a partial is registered.
 
-		wp_send_json_success( $results );
+		wp_send_json_success( $response );
 	}
 }
