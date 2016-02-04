@@ -101,6 +101,14 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 		$this->script_handles['selective-refresh-preview'] = $handle;
+
+		$handle = 'customize-preview-nav-menus';
+		$src = $this->get_dir_url( 'js/customize-preview-nav-menus.js' );
+		$deps = array( 'customize-preview', 'customize-selective-refresh-preview' );
+		$in_footer = true;
+		$wp_scripts->remove( $handle );
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+		$this->script_handles['customize-preview-nav-menus'] = $handle;
 	}
 
 	/**

@@ -21,13 +21,19 @@ class WP_Customize_Selective_Refresh {
 	public $manager;
 
 	/**
+	 * Selective refresh for nav menus.
+	 *
+	 * @var WP_Customize_Nav_Menu_Selective_Refresh
+	 */
+	public $nav_menu_selective_refresh;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param WP_Customize_Partial_Refresh_Plugin $plugin Plugin instance.
 	 */
 	public function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
 		$this->plugin = $plugin;
-		require_once __DIR__ . '/class-wp-customize-partial.php';
 		add_action( 'after_setup_theme', array( $this, 'init' ), 11 );
 	}
 
@@ -125,23 +131,15 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function init() {
 		global $wp_customize;
-		if ( isset( $wp_customize ) ) {
-			$this->manager = $wp_customize;
+		if ( ! isset( $wp_customize ) ) {
+			return;
 		}
+		require_once dirname( __FILE__ ) . '/class-wp-customize-partial.php';
+		require_once dirname( __FILE__ ) . '/class-wp-customize-nav-menu-selective-refresh.php';
+		$this->manager = $wp_customize;
+		$this->nav_menu_selective_refresh = new WP_Customize_Nav_Menu_Selective_Refresh( $this->plugin, $this->manager );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
-		add_action( 'customize_register', array( $this, 'disable_core_nav_menu_refresh' ) );
-	}
-
-	/**
-	 * Disable nav menu partial refresh as bundled in Core.
-	 *
-	 * @param WP_Customize_Manager $wp_customize Manager.
-	 */
-	public function disable_core_nav_menu_refresh( $wp_customize ) {
-		if ( ! empty( $wp_customize->nav_menus ) ) {
-			remove_action( 'customize_preview_init', array( $wp_customize->nav_menus, 'customize_preview_init' ) );
-		}
 	}
 
 	/**
@@ -151,7 +149,7 @@ class WP_Customize_Selective_Refresh {
 	 * @access public
 	 */
 	public function init_preview() {
-		add_action( 'template_redirect', array( $this, 'render_partials' ) );
+		add_action( 'template_redirect', array( $this, 'handle_render_partials_request' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
 	}
 
@@ -213,68 +211,84 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
-	 * Register dynamically-created partial.
+	 * Register dynamically-created partials.
 	 *
 	 * @since 4.5.0
 	 * @access public
 	 * @see WP_Customize_Manager::add_dynamic_settings()
 	 *
-	 * @param string $partial_id         The partial ID to add.
+	 * @param array $partial_ids         The partial ID to add.
 	 * @return WP_Customize_Partial|null The instance or null if no filters applied.
 	 */
-	public function add_dynamic_partial( $partial_id ) {
+	public function add_dynamic_partials( $partial_ids ) {
+		$new_partials = array();
 
-		// Skip partials already created.
-		$partial = $this->get_partial( $partial_id );
-		if ( $partial ) {
-			return $partial;
+		foreach ( $partial_ids as $partial_id ) {
+
+			// Skip partials already created.
+			$partial = $this->get_partial( $partial_id );
+			if ( $partial ) {
+				continue;
+			}
+
+			$partial_args = false;
+			$partial_class = 'WP_Customize_Partial';
+
+			/**
+			 * Filter a dynamic partial's constructor args.
+			 *
+			 * For a dynamic partial to be registered, this filter must be employed
+			 * to override the default false value with an array of args to pass to
+			 * the WP_Customize_Setting constructor.
+			 *
+			 * @since 4.5.0
+			 *
+			 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
+			 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 */
+			$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
+			if ( false === $partial_args ) {
+				continue;
+			}
+
+			/**
+			 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
+			 *
+			 * @since 4.5.0
+			 *
+			 * @param string $partial_class WP_Customize_Setting or a subclass.
+			 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 * @param array  $partial_args  WP_Customize_Setting or a subclass.
+			 */
+			$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
+
+			$partial = new $partial_class( $this->plugin, $partial_id, $partial_args );
+
+			$this->add_partial( $partial );
+			$new_partials[] = $partial;
 		}
-
-		$partial_args = false;
-		$partial_class = 'WP_Customize_Partial';
-
-		/**
-		 * Filter a dynamic partial's constructor args.
-		 *
-		 * For a dynamic partial to be registered, this filter must be employed
-		 * to override the default false value with an array of args to pass to
-		 * the WP_Customize_Setting constructor.
-		 *
-		 * @since 4.5.0
-		 *
-		 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
-		 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
-		 */
-		$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
-		if ( false === $partial_args ) {
-			return null;
-		}
-
-		/**
-		 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
-		 *
-		 * @since 4.5.0
-		 *
-		 * @param string $partial_class WP_Customize_Setting or a subclass.
-		 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
-		 * @param array  $partial_args  WP_Customize_Setting or a subclass.
-		 */
-		$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
-
-		$partial = new $partial_class( $this, $partial_id, $partial_args );
-
-		$this->add_partial( $partial );
-		return $partial;
+		return $new_partials;
 	}
 
 	/**
-	 * Ajax request to return the settings partial value.
+	 * Return whether the current request is to render partials.
+	 *
+	 * Note that this does not validate the request arguments, such as the nonce.
+	 *
+	 * @return bool
+	 */
+	public function is_partial_render_request() {
+		return ! empty( $_POST[ static::RENDER_QUERY_VAR ] );
+	}
+
+	/**
+	 * Handle Ajax request to return the settings partial value.
 	 *
 	 * @since 4.5.0
 	 * @access public
 	 */
-	public function render_partials() {
-		if ( ! isset( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
+	public function handle_render_partials_request() {
+		if ( ! $this->is_partial_render_request() ) {
 			return;
 		}
 
@@ -295,6 +309,7 @@ class WP_Customize_Selective_Refresh {
 		if ( ! is_array( $partials ) ) {
 			wp_send_json_error( 'malformed_partials' );
 		}
+		$this->add_dynamic_partials( array_keys( $partials ) );
 
 		// @todo Do wp_enqueue_scripts() so that we can gather the enqueued scripts and return them in the response?
 
@@ -305,9 +320,6 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			$partial = $this->get_partial( $partial_id );
-			if ( ! $partial ) {
-				$partial = $this->add_dynamic_partial( $partial_id );
-			}
 			if ( ! $partial ) {
 				$contents[ $partial_id ] = null;
 				continue;

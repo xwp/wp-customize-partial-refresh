@@ -32,12 +32,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	 * @param {array}  options.params.settings         The IDs for the settings the partial relates to.
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
 	 */
-	self.Partial = api.Class.extend({
+	api.Partial = api.Class.extend({
 
 		id: null,
 
 		defaults: {
-			type: 'default',
 			selector: '',
 			settings: [],
 			primarySetting: null
@@ -60,8 +59,6 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			partial.deferred.ready.done( function() {
 				partial.ready();
 			} );
-
-			// @todo Add templateSelector? Add container? No, these can be added by subclasses and used optionally.
 		},
 
 		/**
@@ -77,7 +74,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					return;
 				}
 				e.preventDefault();
-				partial.showControl();
+				_.each( partial.containers(), function( container ) {
+					if ( container.element.is( e.currentTarget ) ) {
+						partial.showControl();
+					}
+				} );
 			} );
 		},
 
@@ -96,7 +97,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					element: container,
 					context: container.data( 'customize-container-context' )
 				};
-			} );
+			} ).get();
 		},
 
 		/**
@@ -301,18 +302,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	/**
 	 * Mapping of type names to Partial constructor subclasses.
 	 *
-	 * @type {Object.<string, self.Partial>}
+	 * @type {Object.<string, wp.customize.Partial>}
 	 */
-	self.partialConstructor = {};
+	api.partialConstructor = {};
 
-	self.partial = new api.Values({ defaultConstructor: self.Partial });
-
-
-	self.NavMenuPartial = self.Partial.extend({
-
-	});
-
-	self.partialConstructor.nav_menu = self.NavMenuPartial;
+	api.partial = new api.Values({ defaultConstructor: api.Partial });
 
 	/**
 	 * Get the POST vars for a Customizer preview request.
@@ -361,7 +355,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 	/**
 	 *
-	 * @param {self.Partial} partial
+	 * @param {wp.customize.Partial} partial
 	 * @return {jQuery.Promise}
 	 */
 	self.requestPartial = function( partial ) {
@@ -403,7 +397,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partialContainerContexts = {};
 				_.each( self._pendingPartialRequests, function( pending, partialId ) {
 					partialsContainers[ partialId ] = pending.partial.containers();
-					if ( ! self.partial.has( partialId ) ) {
+					if ( ! api.partial.has( partialId ) ) {
 						pending.deferred.rejectWith( pending.partial, [ new Error( 'partial_removed' ), partialsContainers[ partialId ] ] );
 					} else {
 						/*
@@ -483,11 +477,11 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
-			var Constructor, partial = self.partial( id );
+			var Constructor, partial = api.partial( id );
 			if ( ! partial ) {
-				Constructor = self.partialConstructor[ data.type ] || self.Partial;
+				Constructor = api.partialConstructor[ data.type ] || api.Partial;
 				partial = new Constructor( id, { params: data } );
-				self.partial.add( id, partial );
+				api.partial.add( id, partial );
 			} else {
 				_.extend( partial.params, data );
 			}
@@ -495,7 +489,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 
 		// Trigger update for each partial that is associated with a changed setting.
 		api.bind( 'change', function( setting ) {
-			self.partial.each( function( partial ) {
+			api.partial.each( function( partial ) {
 				if ( partial.isRelatedSetting( setting ) ) {
 					partial.refresh();
 				}
@@ -505,12 +499,12 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		api.preview.bind( 'active', function() {
 
 			// Make all partials ready.
-			self.partial.each( function( partial ) {
+			api.partial.each( function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 
 			// Make all partials added henceforth as ready upon add.
-			self.partial.bind( 'add', function( partial ) {
+			api.partial.bind( 'add', function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 		} );
