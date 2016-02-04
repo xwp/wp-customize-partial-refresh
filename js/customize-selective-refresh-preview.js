@@ -204,10 +204,10 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		 *
 		 * @todo Change args to be positional for closer parity with render filters? $rendered, $partial, $container_context
 		 *
-		 * @param {object} container
-		 * @param {jQuery} [container.element] - This param will be empty if there was no element matching the selector.
-		 * @param {string} container.content   - Rendered HTML content.
-		 * @param {object} [container.context] - Optional context information about the container.
+		 * @param {object}         container
+		 * @param {jQuery}         [container.element] - This param will be empty if there was no element matching the selector.
+		 * @param {string|boolean} container.content   - Rendered HTML content, or false if no render.
+		 * @param {object}         [container.context] - Optional context information about the container.
 		 */
 		renderContent: function( container ) {
 			var partial = this, content;
@@ -215,8 +215,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return;
 			}
-			if ( ! container.element ) {
-				partial.fallback( new Error( 'null_content' ), [ container ] );
+			if ( false === container.content ) {
+				partial.fallback( new Error( 'missing_render' ), [ container ] );
 				return;
 			}
 			content = container.content;
@@ -437,8 +437,8 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					 */
 					_.each( self._pendingPartialRequests, function( pending, partialId ) {
 						var containersContents;
-						if ( null === data.contents[ partialId ] ) {
-							pending.deferred.rejectWith( pending.partial, [ new Error( 'null_contents' ), partialsContainers[ partialId ] ] );
+						if ( ! _.isArray( data.contents[ partialId ] ) ) {
+							pending.deferred.rejectWith( pending.partial, [ new Error( 'unrecognized_partial' ), partialsContainers[ partialId ] ] );
 						} else {
 							containersContents = _.map( data.contents[ partialId ], function( content, i ) {
 								return _.extend(

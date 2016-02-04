@@ -130,20 +130,21 @@ class WP_Customize_Partial {
 	/**
 	 * Render the template partial involving the associated settings.
 	 *
+	 * @since 4.5.0
 	 * @access public
-	 * @param array|null $container_context Optional array of context data associated with the target container.
 	 *
+	 * @param array $container_context Optional array of context data associated with the target container.
 	 * @todo How many mechanisms do we want to provide? render_callback, and filters, and overridable method?
 	 *
-	 * @return string|null The rendered partial, or null if no rendering applied.
+	 * @return string|false The rendered partial as a string, or false if no render applied.
 	 */
-	final public function render( $container_context = null ) {
+	final public function render( $container_context = array() ) {
 		$partial = $this;
 
-		$rendered = null;
+		$rendered = false;
 		if ( ! empty( $this->render_callback ) ) {
 			ob_start();
-			$return_render = call_user_func( $this->render_callback, $this );
+			$return_render = call_user_func( $this->render_callback, $this, $container_context );
 			$ob_render = ob_get_clean();
 
 			if ( null !== $return_render && '' !== $ob_render ) {
@@ -161,7 +162,7 @@ class WP_Customize_Partial {
 		/**
 		 * Filter partial rendering.
 		 *
-		 * @param mixed                $rendered          The partial value. Default null.
+		 * @param string|false         $rendered          The partial value. Default false.
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
@@ -170,7 +171,7 @@ class WP_Customize_Partial {
 		/**
 		 * Filter partial rendering by the partial ID.
 		 *
-		 * @param mixed                $rendered          The partial value. Default null.
+		 * @param string|false         $rendered          The partial value. Default false.
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
@@ -190,10 +191,10 @@ class WP_Customize_Partial {
 	 *
 	 * @access public
 	 *
-	 * @return string|null
+	 * @return string|false
 	 */
 	public function render_callback() {
-		return null;
+		return false;
 	}
 
 	/**
