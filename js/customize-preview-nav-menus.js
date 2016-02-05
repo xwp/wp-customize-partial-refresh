@@ -98,6 +98,27 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				return true;
 			}
 			return false;
+		},
+
+		/**
+		 * Prepare containers for selective refresh.
+		 *
+		 * @inheritdoc
+		 * @param {object} container
+		 */
+		renderContent: function( container ) {
+			var partial = this;
+			if ( api.Partial.prototype.renderContent.apply( partial, arguments ) ) {
+
+				// Trigger deprecated event.
+				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
+					instanceNumber: null, // @deprecated
+					wpNavArgs: container.context, // @deprecated
+					wpNavMenuArgs: container.context,
+					oldContainer: container.element,
+					newContainer: container.element
+				} ] );
+			}
 		}
 	});
 

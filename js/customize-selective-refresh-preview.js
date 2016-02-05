@@ -200,16 +200,17 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * @param {jQuery}         [container.element] - This param will be empty if there was no element matching the selector.
 		 * @param {string|boolean} container.content   - Rendered HTML content, or false if no render.
 		 * @param {object}         [container.context] - Optional context information about the container.
+		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
 		renderContent: function( container ) {
 			var partial = this, content;
 			if ( ! container.element ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
-				return;
+				return false;
 			}
 			if ( false === container.content ) {
 				partial.fallback( new Error( 'missing_render' ), [ container ] );
-				return;
+				return false;
 			}
 			content = container.content;
 
@@ -226,6 +227,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			partial.setupMediaElements( container.element, content );
 
 			container.element.removeClass( 'customize-partial-refreshing' );
+
+			return true;
 		},
 
 		/**
