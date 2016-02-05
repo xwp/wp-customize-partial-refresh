@@ -286,8 +286,16 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 		$nav_menu_args['echo'] = false;
 
 		$this->suspended_wp_nav_menu_filters = true;
-		$return = wp_nav_menu( $nav_menu_args );
+		$container = wp_nav_menu( $nav_menu_args );
 		$this->suspended_wp_nav_menu_filters = false;
-		return $return;
+
+		/*
+		 * Unwrap the container to return the contents. This could be done
+		 * automatically on the JS side, by checking if the returned value
+		 * contains a root element that has the same element name, ID and/or classes.
+		 */
+		$content = preg_replace( '#^\s*<(\w+)[^>]*?>(.+)</\1>\s*$#s', '$2', $container );
+
+		return $content;
 	}
 }

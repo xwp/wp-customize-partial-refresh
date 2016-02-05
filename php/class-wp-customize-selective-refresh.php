@@ -283,7 +283,6 @@ class WP_Customize_Selective_Refresh {
 
 		$this->manager->remove_preview_signature();
 
-		// @todo Allow JS to pass additional args for the partial, like the context, such as the nav menu args. See \WP_Customize_Nav_Menus::render_menu();
 		if ( ! check_ajax_referer( 'preview-customize_' . $this->manager->get_stylesheet(), 'nonce', false ) ) {
 			status_header( 403 );
 			wp_send_json_error( 'nonce_check_fail' );
