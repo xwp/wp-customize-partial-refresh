@@ -1,74 +1,100 @@
-wp.customize.MenusCustomizerPreview = ( function( $, _, wp, api ) {
+wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function( $, _, wp, api ) {
 	'use strict';
 
 	var self = {};
 
-	self.NavMenuPartial = api.Partial.extend({
-
-		defaults: {
-			selector: '[data-nav-menu-container=true]',
-			settings: [],
-			primarySetting: null
-		},
-
-		initialize: function() {
-			var partial = this, matches;
-			api.Partial.prototype.initialize.apply( partial, arguments );
-			matches = partial.id.match( /^nav_menu\[(-?\d+)]$/ );
-			if ( ! matches ) {
-				throw new Error( 'Illegal id for nav_menu partial.' );
-			}
-			partial.navMenuId = parseInt( matches[1], 10 );
-		},
-
-		// @todo override showControl() behavior so that nav menu items will get focused instead?
+	/**
+	 * Partial representing an invocation of wp_nav_menu().
+	 *
+	 * @class
+	 * @augments wp.customize.Partial
+	 * @since 4.5.0
+	 */
+	self.NavMenuPlacementPartial = api.Partial.extend({
 
 		/**
-		 * Get a mapping of nav menu locations to nav menu IDs.
+		 * Constructor.
 		 *
-		 * @todo This can be cached until a nav_menu_location setting changes, is added or removed. This can be a helper method in the namespace.
-		 *
-		 * @returns {object}
+		 * @since 4.5.0
+		 * @param {string} id      - Partial ID.
+		 * @param {Object} options -
+		 * @param {Object} options.params
+		 * @param {jQuery} options.params.containerElement
+		 * @param {Object} options.params.navMenuArgs
 		 */
-		getNavMenuLocations: function() {
-			var navMenuLocations = {};
-			api.each( function( setting ) {
-				var matches = setting.id.match( /^nav_menu_locations\[(.+)]/ );
-				if ( matches ) {
-					navMenuLocations[ matches[1] ] = setting();
-				}
-			} );
-			return navMenuLocations;
+		initialize: function( id, options ) {
+			var partial = this, matches;
+			matches = id.match( /^nav_menu_placement\[(\d+)]$/ );
+			if ( ! matches ) {
+				throw new Error( 'Illegal id for nav_menu_placement partial.' );
+			}
+
+			options = options || {};
+			options.params = options.params || {};
+			options.params = _.extend(
+				{
+					containerElement: null,
+					navMenuArgs: {}
+				},
+				options.params
+			);
+			api.Partial.prototype.initialize.call( partial, id, options );
+
+			if ( ! _.isObject( partial.params.navMenuArgs ) ) {
+				throw new Error( 'Missing navMenuArgs' );
+			}
 		},
 
+		/**
+		 * Get the containers for this partial.
+		 *
+		 * Since one partial is created for each single instance of a wp_nav_menu()
+		 * invoked on the page, the returned array will only contain one container item.
+		 *
+		 * @since 4.5.0
+		 * @returns {Array}
+		 */
 		containers: function() {
-			var partial = this, containers, navMenuLocations;
-			containers = api.Partial.prototype.containers.call( partial );
-			navMenuLocations = partial.getNavMenuLocations();
-
-			containers = _.filter( containers, function( container ) {
-				var navMenuArgs = container.context;
-				return (
-					( partial.navMenuId === navMenuArgs.menu_id || partial.navMenuId === navMenuArgs.menu ) ||
-					( navMenuLocations[ navMenuArgs.theme_location ] === partial.navMenuId )
-				);
-			} );
-			return containers;
+			var partial = this, container;
+			container = {
+				element: partial.params.containerElement,
+				context: partial.params.navMenuArgs
+			};
+			return [ container ];
 		},
 
+		/**
+		 * Return whether the setting is related to this partial.
+		 *
+		 * @since 4.5.0
+		 * @param {wp.customize.Value|string} setting - Object or ID.
+		 * @returns {boolean}
+		 */
 		isRelatedSetting: function( setting ) {
-			var partial = this, value;
+			var partial = this, navMenuLocationSetting, navMenuId;
 			if ( _.isString( setting ) ) {
 				setting = api( setting );
 			}
-			if ( -1 !== _.indexOf( partial.settings(), setting.id ) ) {
+
+			if ( partial.params.navMenuArgs.theme_location ) {
+				if ( 'nav_menu_locations[' + partial.params.navMenuArgs.theme_location + ']' === setting.id ) {
+					return true;
+				}
+				navMenuLocationSetting = api( 'nav_menu_locations[' + partial.params.navMenuArgs.theme_location + ']' );
+			}
+
+			navMenuId = partial.params.menu;
+			if ( ! navMenuId && navMenuLocationSetting ) {
+				navMenuId = navMenuLocationSetting();
+			}
+
+			if ( partial.params.navMenuArgs.menu === navMenuId ) {
 				return true;
 			}
-			value = setting();
-			if ( /^nav_menu_item\[/.test( setting.id ) && value.nav_menu_term_id === partial.navMenuId ) {
+			if ( navMenuId && 'nav_menu[' + navMenuId + ']' === setting.id ) {
 				return true;
 			}
-			if ( /^nav_menu_locations\[/.test( setting.id ) && value === partial.navMenuId ) {
+			if ( ( /^nav_menu_item\[/.test( setting.id ) && setting().nav_menu_term_id === navMenuId ) ) {
 				return true;
 			}
 			return false;
@@ -76,14 +102,16 @@ wp.customize.MenusCustomizerPreview = ( function( $, _, wp, api ) {
 	});
 
 	// @todo Trigger the customize-preview-menu-refreshed (deprecated) event based on an underlying wp.customize partial-refreshed event.
-	// @todo Handle the clearing out of a nav_menu_location. We need to add listeners to all nav_menu_location settings, and trigger partial refreshes for the nav menu formerly assigned.
 
-	api.partialConstructor.nav_menu = self.NavMenuPartial;
+	api.partialConstructor.nav_menu = self.NavMenuPlacementPartial;
 
 	/**
 	 * Connect nav menu items with their corresponding controls in the pane.
 	 *
 	 * Setup shift-click on nav menu items which are more granular than the nav menu partial itself.
+	 * Also this applies even if a nav menu is not partial-refreshable.
+	 *
+	 * @since 4.5.0
 	 */
 	self.highlightControls = function() {
 		var selector = '.menu-item[id^=menu-item-]';
@@ -95,6 +123,8 @@ wp.customize.MenusCustomizerPreview = ( function( $, _, wp, api ) {
 				return;
 			}
 
+			// @todo Re-add the title attribute for editing.
+
 			navMenuItemParts = $( this ).attr( 'id' ).match( /^menu-item-(\d+)$/ );
 			if ( navMenuItemParts ) {
 				e.preventDefault();
@@ -104,25 +134,65 @@ wp.customize.MenusCustomizerPreview = ( function( $, _, wp, api ) {
 		});
 	};
 
-	// Add partials for any nav_menu setting created.
-	api.bind( 'add', function( setting ) {
-		var partial;
-		if ( /^nav_menu\[/.test( setting.id ) ) {
-			partial = new self.NavMenuPartial( setting.id, {
-				settings: [ setting.id ]
+	/**
+	 * Add partials for any nav menu container elements in the document.
+	 *
+	 * This method may be called multiple times. Containers that already have been
+	 * seen will be skipped.
+	 *
+	 * @since 4.5.0
+	 */
+	self.addPartialsForContainers = function() {
+		var containerElements = $( '[data-customize-nav-menu-args]' );
+		containerElements.each( function() {
+			var partial, containerElement = $( this );
+			if ( containerElement.data( 'customize-partial-container-added' ) ) {
+				return;
+			}
+			partial = new self.NavMenuPlacementPartial( 'nav_menu_placement[' + String( _.uniqueId() ) + ']', {
+				params: {
+					containerElement: containerElement,
+					navMenuArgs: containerElement.data( 'customize-nav-menu-args' )
+				}
 			} );
 			api.partial.add( partial.id, partial );
-		}
-	} );
+			containerElement.data( 'customize-partial-container-added', true );
+		} );
+	};
 
-	// Remove paritals for any nav_menu settings removed.
-	api.bind( 'remove', function( setting ) {
-		if ( /^nav_menu\[/.test( setting.id ) ) {
-			api.partial.remove( setting.id );
-		}
-	} );
+	/**
+	 * Watch for changes to nav_menu_locations[] settings.
+	 *
+	 * Refresh partials associated with the given nav_menu_locations[] setting,
+	 * or request an entire preview refresh if there are no containers in the
+	 * document for a partial associated with the theme location.
+	 *
+	 * @since 4.5.0
+	 */
+	self.watchNavMenuLocationChanges = function() {
+		api.bind( 'change', function( setting ) {
+			var themeLocation, themeLocationPartialFound = false, matches = setting.id.match( /^nav_menu_locations\[(.+)]$/ );
+			if ( ! matches ) {
+				return;
+			}
+			themeLocation = matches[1];
+			api.partial.each( function( partial ) {
+				if ( partial.extended( self.NavMenuPlacementPartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
+					partial.refresh();
+					themeLocationPartialFound = true;
+				}
+			} );
+
+			if ( ! themeLocationPartialFound ) {
+				api.selectiveRefresh.requestFullRefresh();
+			}
+		} );
+	};
 
 	api.bind( 'preview-ready', function() {
+		self.addPartialsForContainers();
+		self.watchNavMenuLocationChanges();
+
 		api.preview.bind( 'active', function() {
 			self.highlightControls();
 		} );

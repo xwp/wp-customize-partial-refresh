@@ -1,6 +1,5 @@
 /* global jQuery, JSON, _customizeSelectiveRefreshExports, _wpmejsSettings */
-/* exported customizeSelectiveRefreshPreview */
-var customizeSelectiveRefreshPreview = ( function( $, api ) {
+wp.customize.selectiveRefresh = ( function( $, api ) {
 	'use strict';
 
 	var self = {
@@ -9,7 +8,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			partials: {},
 			renderQueryVar: '',
 			l10n: {},
-			refreshBuffer: 25 // @todo Increase to 250
+			refreshBuffer: 250 // @todo Increase to 250
 		},
 		currentRequest: null
 	};
@@ -31,27 +30,26 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	 * @param {string} options.params.selector         jQuery selector to find the container element in the page.
 	 * @param {array}  options.params.settings         The IDs for the settings the partial relates to.
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
+	 * @param {bool}   options.params.fallbackRefresh  Whether to refresh the entire preview in case of a partial refresh failure.
 	 */
 	api.Partial = api.Class.extend({
 
 		id: null,
 
-		defaults: {
-			selector: '',
-			settings: [],
-			primarySetting: null
-		},
-
 		initialize: function( id, options ) {
 			var partial = this;
 			options = options || {};
 			partial.id = id;
-			partial.params = {};
 
-			$.extend( partial.params, _.defaults(
-				options.params || {},
-				partial.defaults
-			) );
+			partial.params = _.extend(
+				{
+					selector: '',
+					settings: [],
+					primarySetting: null,
+					fallbackRefresh: true // Note this needs to be false in a frontend editing context.
+				},
+				options.params || {}
+			);
 
 			partial.deferred = {};
 			partial.deferred.ready = $.Deferred();
@@ -156,48 +154,41 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * @private
 		 */
-		_pendingUpdatePromise: null,
+		_pendingRefreshPromise: null,
 
 		/**
 		 * Request the new partial and render it into the containers.
 		 *
 		 * @return {jQuery.Promise}
-		 *
-		 * @todo Break this up into a request() and render() methods
-		 * @todo Batch requests. This is not a concern for caching because Customizer preview responses aren't cached anyway.
-		 * @todo Debounce and return promise.
 		 */
 		refresh: function() {
-			var partial = this;
+			var partial = this, refreshPromise;
 
-			// @todo The containers may contain additional contextual information that need to be passed along in the request
-			// @todo partial.requestDeferreds
+			refreshPromise = self.requestPartial( partial );
 
-			if ( partial._pendingUpdatePromise ) {
-				return partial._pendingUpdatePromise;
+			if ( ! partial._pendingRefreshPromise ) {
+				_.each( partial.containers(), function( container ) {
+					partial.prepareContainer( container );
+				} );
+
+				refreshPromise.done( function( containers ) {
+					_.each( containers, function( container ) {
+						partial.renderContent( _.extend( {}, container ) );
+					} );
+				} );
+
+				refreshPromise.fail( function( data, containers ) {
+					partial.fallback( data, containers );
+				} );
+
+				// Allow new request when this one finishes.
+				partial._pendingRefreshPromise = refreshPromise;
+				refreshPromise.always( function() {
+					partial._pendingRefreshPromise = null;
+				} );
 			}
 
-			_.each( partial.containers(), function( container ) {
-				partial.prepareContainer( container );
-			} );
-
-			partial._pendingUpdatePromise = self.requestPartial( partial );
-
-			partial._pendingUpdatePromise.done( function( containers ) {
-				_.each( containers, function( container ) {
-					partial.renderContent( container );
-				} );
-			} );
-			partial._pendingUpdatePromise.fail( function( data, containers ) {
-				partial.fallback( data, containers );
-			} );
-
-			// Allow new request when this one finishes.
-			partial._pendingUpdatePromise.always( function() {
-				partial._pendingUpdatePromise = null;
-			} );
-
-			return partial._pendingUpdatePromise;
+			return refreshPromise;
 		},
 
 		/**
@@ -229,6 +220,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				content = wp.emoji.parse( content );
 			}
 
+			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children.
 			container.element.html( content );
 
 			partial.setupMediaElements( container.element, content );
@@ -284,17 +276,9 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 		 */
 		fallback: function() {
 			var partial = this;
-			partial.requestFullRefresh();
-		},
-
-		/**
-		 * Request full page refresh.
-		 *
-		 * When selective refresh is embedded in the context of frontend editing, this request
-		 * must fail or else changes will be lost, unless transactions are implemented.
-		 */
-		requestFullRefresh: function() {
-			api.preview.send( 'refresh' );
+			if ( partial.params.fallbackRefresh ) {
+				self.requestFullRefresh();
+			}
 		}
 
 	} );
@@ -351,7 +335,17 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 	 * @type {jQuery.jqXHR|null}
 	 * @private
 	 */
-	self._currentPartialsRequest = null;
+	self._currentRequest = null;
+
+	/**
+	 * Request full page refresh.
+	 *
+	 * When selective refresh is embedded in the context of frontend editing, this request
+	 * must fail or else changes will be lost, unless transactions are implemented.
+	 */
+	self.requestFullRefresh = function() {
+		api.preview.send( 'refresh' );
+	};
 
 	/**
 	 *
@@ -365,21 +359,22 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 			clearTimeout( self._debouncedTimeoutId );
 			self._debouncedTimeoutId = null;
 		}
-		if ( self._currentPartialsRequest ) {
-			self._currentPartialsRequest.abort();
-			self._currentPartialsRequest = null;
+		if ( self._currentRequest ) {
+			self._currentRequest.abort();
+			self._currentRequest = null;
 		}
 
 		partialRequest = self._pendingPartialRequests[ partial.id ];
-		if ( partialRequest ) {
-			return partialRequest.deferred.promise();
+		if ( ! partialRequest || 'pending' !== partialRequest.deferred.state() ) {
+			partialRequest = {
+				deferred: $.Deferred(),
+				partial: partial
+			};
+			self._pendingPartialRequests[ partial.id ] = partialRequest;
 		}
 
-		partialRequest = {
-			deferred: $.Deferred(),
-			partial: partial
-		};
-		self._pendingPartialRequests[ partial.id ] = partialRequest;
+		// Prevent leaking partial into debounced timeout callback.
+		partial = null;
 
 		self._debouncedTimeoutId = setTimeout(
 			function() {
@@ -416,7 +411,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 				data.partials = JSON.stringify( partialContainerContexts );
 				data[ self.data.renderQueryVar ] = '1';
 
-				request = self._pendingPartialsRequests = wp.ajax.send( null, {
+				request = self._currentRequest = wp.ajax.send( null, {
 					data: data,
 					url: api.settings.url.self
 				} );
@@ -443,6 +438,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 							pending.deferred.resolveWith( pending.partial, [ containersContents ] );
 						}
 					} );
+					self._pendingPartialRequests = {};
 				} );
 
 				request.fail( function( data, statusText ) {
@@ -459,10 +455,7 @@ var customizeSelectiveRefreshPreview = ( function( $, api ) {
 					_.each( self._pendingPartialRequests, function( pending, partialId ) {
 						pending.deferred.rejectWith( pending.partial, [ data, partialsContainers[ partialId ] ] );
 					} );
-				} );
-
-				request.always( function() {
-					delete self._pendingPartialRequests[ partial.id ];
+					self._pendingPartialRequests = {};
 				} );
 			},
 			self.data.refreshBuffer

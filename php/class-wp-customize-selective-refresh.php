@@ -271,24 +271,13 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
-	 * Return whether the current request is to render partials.
-	 *
-	 * Note that this does not validate the request arguments, such as the nonce.
-	 *
-	 * @return bool
-	 */
-	public function is_partial_render_request() {
-		return ! empty( $_POST[ static::RENDER_QUERY_VAR ] );
-	}
-
-	/**
 	 * Handle Ajax request to return the settings partial value.
 	 *
 	 * @since 4.5.0
 	 * @access public
 	 */
 	public function handle_render_partials_request() {
-		if ( ! $this->is_partial_render_request() ) {
+		if ( empty( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
 			return;
 		}
 

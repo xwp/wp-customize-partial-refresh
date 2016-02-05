@@ -88,12 +88,18 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	 */
 	public function customize_dynamic_partial_args( $partial_args, $partial_id ) {
 
-		if ( preg_match( '/^nav_menu\[(?P<nav_menu_id>-?\d+)\]$/', $partial_id, $matches ) ) {
+		if ( preg_match( '/^nav_menu_placement\[\d+\]$/', $partial_id ) ) {
 			if ( false === $partial_args ) {
 				$partial_args = array();
 			}
-			$partial_args['type'] = 'nav_menu';
-			$partial_args['render_callback'] = array( $this, 'render_nav_menu_partial' );
+			$partial_args = array_merge(
+				$partial_args,
+				array(
+					'type' => 'nav_menu_placement',
+					'render_callback' => array( $this, 'render_nav_menu_partial' ),
+					// @todo 'container_inclusive' => true, ??
+				)
+			);
 		}
 
 		return $partial_args;
@@ -107,12 +113,21 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	 */
 	public function customize_preview_init() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'customize_preview_enqueue_deps' ) );
-
-		if ( ! $this->plugin->selective_refresh->is_partial_render_request() ) {
-			add_filter( 'wp_nav_menu_args', array( $this, 'filter_wp_nav_menu_args' ), 1000 );
-			add_filter( 'wp_nav_menu', array( $this, 'filter_wp_nav_menu' ), 10, 2 );
-		}
+		add_filter( 'wp_nav_menu_args', array( $this, 'filter_wp_nav_menu_args' ), 1000 );
+		add_filter( 'wp_nav_menu', array( $this, 'filter_wp_nav_menu' ), 10, 2 );
 	}
+
+	/**
+	 * Whether the wp_nav_menu preview filters should be suspended.
+	 *
+	 * @see WP_Customize_Nav_Menu_Selective_Refresh::filter_wp_nav_menu_args()
+	 * @see WP_Customize_Nav_Menu_Selective_Refresh::filter_wp_nav_menu
+	 *
+	 * @since 4.5.0
+	 * @access private
+	 * @var bool
+	 */
+	protected $suspended_wp_nav_menu_filters = false;
 
 	/**
 	 * Keep track of the arguments that are being passed to wp_nav_menu().
@@ -126,6 +141,9 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	 * @return array Arguments.
 	 */
 	public function filter_wp_nav_menu_args( $args ) {
+		if ( $this->suspended_wp_nav_menu_filters ) {
+			return $args;
+		}
 
 		$can_partial_refresh = (
 			! empty( $args['echo'] )
@@ -146,12 +164,14 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 				'<' === substr( $args['items_wrap'], 0, 1 )
 			)
 		);
-
 		if ( ! $can_partial_refresh ) {
 			return $args;
 		}
 
 		$exported_args = $args;
+
+		$this->preview_nav_menu_instance_number += 1;
+		$args['instance_number'] = $this->preview_nav_menu_instance_number;
 
 		// Replace object menu arg with a term_id menu arg, as this exports better to JS and is easier to compare hashes.
 		if ( ! empty( $exported_args['menu'] ) && is_object( $exported_args['menu'] ) ) {
@@ -161,7 +181,7 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 		ksort( $exported_args );
 		$exported_args['args_hmac'] = $this->hash_nav_menu_args( $exported_args );
 
-		$args['customize_container_context'] = $exported_args;
+		$this->preview_nav_menu_instance_args[ $this->preview_nav_menu_instance_number ] = $exported_args;
 
 		return $args;
 	}
@@ -179,12 +199,16 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	 * @return null
 	 */
 	public function filter_wp_nav_menu( $nav_menu_content, $args ) {
-		if ( ! empty( $args->customize_container_context ) ) {
+		if ( $this->suspended_wp_nav_menu_filters ) {
+			return $nav_menu_content;
+		}
+
+		if ( ! empty( $args->instance_number ) ) {
 			$nav_menu_content = preg_replace(
 				'#^(<\w+)#',
 				sprintf(
-					'$1 data-customize-container-context="%s" data-nav-menu-container="true"',
-					esc_attr( wp_json_encode( $args->customize_container_context ) )
+					'$1 data-customize-nav-menu-args="%s"',
+					esc_attr( wp_json_encode( $this->preview_nav_menu_instance_args[ $args->instance_number ] ) )
 				),
 				$nav_menu_content,
 				1 // Only replace first.
@@ -229,9 +253,7 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	public function export_preview_data() {
 
 		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings.
-		$exports = array(
-			'navMenuInstanceArgs'   => $this->preview_nav_menu_instance_args,
-		);
+		$exports = array();
 
 		printf( '<script>var _wpCustomizePreviewNavMenusExports = %s;</script>', wp_json_encode( $exports ) );
 	}
@@ -262,6 +284,10 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 		}
 
 		$nav_menu_args['echo'] = false;
-		return wp_nav_menu( $nav_menu_args );
+
+		$this->suspended_wp_nav_menu_filters = true;
+		$return = wp_nav_menu( $nav_menu_args );
+		$this->suspended_wp_nav_menu_filters = false;
+		return $return;
 	}
 }
