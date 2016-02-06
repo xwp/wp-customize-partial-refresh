@@ -1,5 +1,5 @@
-/* global jQuery, JSON, _customizeSelectiveRefreshExports */
-wp.customize.selectiveRefresh = ( function( $, api ) {
+/* global jQuery, JSON, _customizePartialRefreshExports */
+wp.customize.partialRefresh = ( function( $, api ) {
 	'use strict';
 
 	var self = {
@@ -248,7 +248,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 				content = wp.emoji.parse( content );
 			}
 
-			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children?
+			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children? Or WP_Customize_Partial::$container_inclusive could make this explicit.
 			container.element.html( content );
 
 			container.element.removeClass( 'customize-partial-refreshing' );
@@ -402,6 +402,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 				partialsContainers = {};
 
 				partialContainerContexts = {};
+
 				_.each( self._pendingPartialRequests, function( pending, partialId ) {
 					partialsContainers[ partialId ] = pending.partial.containers();
 					if ( ! api.partial.has( partialId ) ) {
@@ -478,7 +479,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 	api.bind( 'preview-ready', function() {
 
-		_.extend( self.data, _customizeSelectiveRefreshExports );
+		_.extend( self.data, _customizePartialRefreshExports );
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {

@@ -124,7 +124,7 @@ class WP_Customize_Partial {
 		}
 
 		$this->plugin = $plugin; // @todo This will be $manager in the Core merge.
-		$this->manager = $plugin->selective_refresh->manager;
+		$this->manager = $plugin->manager;
 		$this->id = $id;
 		if ( empty( $this->render_callback ) ) {
 			$this->render_callback = array( $this, 'render_callback' );

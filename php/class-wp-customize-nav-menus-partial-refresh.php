@@ -1,27 +1,21 @@
 <?php
 /**
- * Selective Refresh.
+ * WP_Customize_Nav_Menus_Partial_Refresh class.
  *
  * @package WordPress
  */
 
 /**
  * This class is a replacement for the rendering methods in WP_Customize_Nav_Menus.
+ *
+ * This will be integrated into WP_Customize_Nav_Menus during core merge.
  */
-class WP_Customize_Nav_Menu_Selective_Refresh {
-
-	/**
-	 * Customize manager.
-	 *
-	 * @access public
-	 * @var WP_Customize_Manager
-	 */
-	public $manager;
+class WP_Customize_Nav_Menus_Partial_Refresh {
 
 	/**
 	 * Plugin instance.
 	 *
-	 * @todo Note that this will be obsolete once features are added to WP_Customize_Manager in the core merge.
+	 * This will not be included in core merge.
 	 *
 	 * @access public
 	 * @var WP_Customize_Partial_Refresh_Plugin
@@ -31,19 +25,20 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	/**
 	 * WP_Customize_Nav_Menu_Selective_Refresh constructor.
 	 *
+	 * This will not be included in core merge.
+	 *
 	 * @param WP_Customize_Partial_Refresh_Plugin $plugin  Plugin instance.
-	 * @param WP_Customize_Manager                $manager Manager instance.
 	 */
-	function __construct( WP_Customize_Partial_Refresh_Plugin $plugin, WP_Customize_Manager $manager ) {
-		$this->manager = $manager;
+	function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
 		$this->plugin = $plugin;
 
 		add_action( 'customize_register', array( $this, 'override_core_nav_menu_refresh' ) );
 	}
 
-
 	/**
 	 * Disable nav menu partial refresh as bundled in Core.
+	 *
+	 * This will not be included in core merge.
 	 *
 	 * @param WP_Customize_Manager $wp_customize Manager.
 	 */

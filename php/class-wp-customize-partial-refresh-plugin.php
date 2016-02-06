@@ -4,126 +4,54 @@ class WP_Customize_Partial_Refresh_Plugin {
 
 	const VERSION = '0.1';
 
-	/**
-	 * @var array
-	 */
-	public $config = array();
+	const RENDER_QUERY_VAR = 'wp_customize_partials_render';
 
 	/**
-	 * @var string
-	 */
-	public $dir_path = '';
-
-	/**
+	 * Plugin directory URL.
+	 *
 	 * @var string
 	 */
 	public $dir_url = '';
 
 	/**
-	 * @var WP_Customize_Selective_Refresh
+	 * Customize manager.
+	 *
+	 * @var WP_Customize_Manager
 	 */
-	public $selective_refresh;
+	public $manager;
 
 	/**
-	 * @var WP_Customize_Partial_Refresh_Widgets
+	 * Selective refresh for nav menus.
+	 *
+	 * @todo This will be integrated into WP_Customize_Nav_Menus
+	 *
+	 * @var WP_Customize_Nav_Menus_Partial_Refresh
+	 */
+	public $nav_menus;
+
+	/**
+	 * Selective refresh for widgets.
+	 *
+	 * @todo This will be integrated into WP_Customize_Widgets
+	 *
+	 * @var WP_Customize_Widgets_Partial_Refresh
 	 */
 	public $widgets;
-
-	/**
-	 * @var array
-	 */
-	public $script_handles = array();
-
-	/**
-	 * @var array
-	 */
-	public $style_handles = array();
 
 	/**
 	 * Plugin bootstrap for Partial Refresh functionality.
 	 */
 	function __construct() {
-		$plugin_location = $this->locate_plugin();
-		$this->dir_path = $plugin_location['dir_path'];
-		$this->dir_url = $plugin_location['dir_url'];
-		$this->config = array();
+		$this->dir_url = plugin_dir_url( dirname( __FILE__ ) );
 
 		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
-		add_action( 'init', array( $this, 'init' ) );
-		$this->selective_refresh = new WP_Customize_Selective_Refresh( $this );
-		$this->widgets = new WP_Customize_Partial_Refresh_Widgets( $this );
+		add_filter( 'customize_loaded_components', array( $this, 'filter_customize_loaded_components' ), 10, 2 );
 	}
 
 	/**
-	 * Apply filters on the plugin configuration.
-	 */
-	function init() {
-		$this->config = apply_filters( 'customize_partial_refresh_config', $this->config, $this );
-		do_action( 'customize_partial_refresh_init', $this );
-	}
-
-	/**
-	 * @param WP_Scripts $wp_scripts
-	 * @action wp_default_scripts
-	 */
-	function register_scripts( $wp_scripts ) {
-		$handle = 'customize-partial-refresh-base';
-		$src = $this->get_dir_url( 'js/customize-partial-refresh-base.js' );
-		$deps = array( 'customize-base' );
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version() );
-		$this->script_handles['base'] = $handle;
-
-		$handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->get_dir_url( 'js/customize-partial-refresh-widgets-preview.js' );
-		$deps = array( 'jquery', 'wp-util', 'customize-preview', 'customize-preview-widgets', $this->script_handles['base'] );
-		$in_footer = true;
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-		$this->script_handles['widgets-preview'] = $handle;
-
-		$handle = 'customize-partial-refresh-widgets-pane';
-		$src = $this->get_dir_url( 'js/customize-partial-refresh-widgets-pane.js' );
-		$deps = array( 'jquery', 'wp-util', 'customize-controls', 'customize-widgets', $this->script_handles['base'] );
-		$in_footer = true;
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-		$this->script_handles['widgets-pane'] = $handle;
-
-		$handle = 'customize-selective-refresh-pane';
-		$src = $this->get_dir_url( 'js/customize-selective-refresh-pane.js' );
-		$deps = array( 'customize-controls', 'jquery', 'wp-util' );
-		$in_footer = true;
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-		$this->script_handles['selective-refresh-pane'] = $handle;
-
-		$handle = 'customize-selective-refresh-preview';
-		$src = $this->get_dir_url( 'js/customize-selective-refresh-preview.js' );
-		$deps = array( 'customize-preview' );
-		$in_footer = true;
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-		$this->script_handles['selective-refresh-preview'] = $handle;
-
-		$handle = 'customize-preview-nav-menus';
-		$src = $this->get_dir_url( 'js/customize-preview-nav-menus.js' );
-		$deps = array( 'customize-preview', 'customize-selective-refresh-preview' );
-		$in_footer = true;
-		$wp_scripts->remove( $handle );
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-		$this->script_handles['customize-preview-nav-menus'] = $handle;
-	}
-
-	/**
-	 * @param WP_Styles $wp_styles
-	 * @action wp_default_styles
-	 */
-	function register_styles( $wp_styles ) {
-		$handle = 'customize-partial-refresh-widgets-preview';
-		$src = $this->get_dir_url( 'css/customize-partial-refresh-widgets-preview.css' );
-		$deps = array();
-		$wp_styles->add( $handle, $src, $deps, $this->get_version() );
-		$this->style_handles['widgets-preview'] = $handle;
-	}
-
-	/**
+	 * Get version.
+	 *
 	 * @return string
 	 */
 	function get_version() {
@@ -132,62 +60,327 @@ class WP_Customize_Partial_Refresh_Plugin {
 	}
 
 	/**
-	 * @param string $path
+	 * Bootstrap.
 	 *
-	 * @return string
+	 * @param array                $components   Components.
+	 * @param WP_Customize_Manager $wp_customize Manager.
+	 * @return array Components.
 	 */
-	function get_dir_url( $path = '/' ) {
-		return trailingslashit( $this->dir_url ) . ltrim( $path, '/' );
+	function filter_customize_loaded_components( $components, $wp_customize ) {
+		$this->manager = $wp_customize;
+
+		require_once dirname( __FILE__ ) . '/class-wp-customize-partial.php';
+		require_once dirname( __FILE__ ) . '/class-wp-customize-nav-menus-partial-refresh.php';
+
+		// @todo require_once dirname( __FILE__ ) . '/class-wp-customize-widget-selective-refresh.php';
+
+		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
+		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
+
+		$this->nav_menus = new WP_Customize_Nav_Menus_Partial_Refresh( $this );
+
+		// @todo $this->widgets = new WP_Customize_Widgets_Partial_Refresh( $this->manager );
+
+		return $components;
 	}
 
 	/**
-	 * @param string $path
+	 * Register scripts.
 	 *
-	 * @return string
+	 * @param WP_Scripts $wp_scripts Scripts.
 	 */
-	function get_dir_path( $path = '/' ) {
-		return trailingslashit( $this->dir_path ) . ltrim( $path, '/' );
+	function register_scripts( $wp_scripts ) {
+		$handle = 'customize-partial-refresh-pane';
+		$src = $this->dir_url . 'js/customize-partial-refresh-pane.js';
+		$deps = array( 'customize-controls', 'jquery', 'wp-util' );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+
+		$handle = 'customize-partial-refresh-preview';
+		$src = $this->dir_url . 'js/customize-partial-refresh-preview.js';
+		$deps = array( 'customize-preview' );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+
+		$handle = 'customize-preview-nav-menus';
+		$src = $this->dir_url . 'js/customize-preview-nav-menus.js';
+		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$in_footer = true;
+		$wp_scripts->remove( $handle );
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 	}
 
 	/**
-	 * Version of plugin_dir_url() which works for plugins installed in the plugins directory,
-	 * and for plugins bundled with themes.
+	 * Register styles.
 	 *
-	 * @throws Exception
-	 * @return array
+	 * @param WP_Styles $wp_styles Styles.
 	 */
-	public function locate_plugin() {
-		$reflection = new ReflectionObject( $this );
-		$file_name = $reflection->getFileName();
-		if ( '/' !== DIRECTORY_SEPARATOR ) {
-			$file_name = str_replace( DIRECTORY_SEPARATOR, '/', $file_name ); // Windows compat
-		}
-		$plugin_dir = preg_replace( '#(.*plugins[^/]*/[^/]+)(/.*)?#', '$1', $file_name, 1, $count );
-		if ( 0 === $count ) {
-			throw new Exception( "Class not located within a directory tree containing 'plugins': $file_name" );
-		}
+	function register_styles( $wp_styles ) {}
 
-		// Make sure that we can reliably get the relative path inside of the content directory
-		$content_dir = trailingslashit( WP_CONTENT_DIR );
-		if ( '/' !== DIRECTORY_SEPARATOR ) {
-			$content_dir = str_replace( DIRECTORY_SEPARATOR, '/', $content_dir ); // Windows compat
-		}
-		if ( 0 !== strpos( $plugin_dir, $content_dir ) ) {
-			throw new Exception( 'Plugin dir is not inside of WP_CONTENT_DIR' );
-		}
-		$content_sub_path = substr( $plugin_dir, strlen( $content_dir ) );
-		$dir_url = content_url( trailingslashit( $content_sub_path ) );
-		$dir_path = $plugin_dir;
-		$dir_basename = basename( $plugin_dir );
-		return compact( 'dir_url', 'dir_path', 'dir_basename' );
+	/**
+	 * Registered instances of WP_Customize_Partial.
+	 *
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @since 4.5.0
+	 * @access protected
+	 * @var WP_Customize_Partial[]
+	 */
+	protected $partials = array();
+
+	/**
+	 * Get the registered partials.
+	 *
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @return WP_Customize_Partial[] Partials.
+	 */
+	public function partials() {
+		return $this->partials;
 	}
 
 	/**
-	 * Return whether we're on WordPress.com VIP production.
+	 * Add a customize partial.
 	 *
-	 * @return bool
+	 * @todo This would be added to WP_Customize_Manager.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @param WP_Customize_Partial|string $id   Customize Partial object, or Panel ID.
+	 * @param array                       $args Optional. Partial arguments. Default empty array.
+	 *
+	 * @return WP_Customize_Partial             The instance of the panel that was added.
 	 */
-	public function is_wpcom_vip_prod() {
-		return ( defined( 'WPCOM_IS_VIP_ENV' ) && WPCOM_IS_VIP_ENV );
+	public function add_partial( $id, $args = array() ) {
+		if ( $id instanceof WP_Customize_Partial ) {
+			$partial = $id;
+		} else {
+			$class = 'WP_Customize_Partial';
+
+			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
+			$args = apply_filters( 'customize_dynamic_partial_args', $args, $id );
+
+			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
+			$class = apply_filters( 'customize_dynamic_partial_class', $class, $id, $args );
+
+			$partial = new $class( $this, $id, $args );
+		}
+
+		$this->partials[ $partial->id ] = $partial;
+		return $partial;
+	}
+
+	/**
+	 * Retrieve a customize partial.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @param string $id Customize Partial ID.
+	 * @return WP_Customize_Partial|null The partial, if set.
+	 */
+	public function get_partial( $id ) {
+		if ( isset( $this->partials[ $id ] ) ) {
+			return $this->partials[ $id ];
+		} else {
+			return null;
+		}
+	}
+
+	/**
+	 * Remove a customize partial.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @param string $id Customize Partial ID.
+	 */
+	public function remove_partial( $id ) {
+		unset( $this->partials[ $id ] );
+	}
+
+	/**
+	 * Initialize Customizer preview.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 */
+	public function init_preview() {
+		add_action( 'template_redirect', array( $this, 'handle_render_partials_request' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
+	}
+
+	/**
+	 * Enqueue pane scripts.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 */
+	public function enqueue_pane_scripts() {
+		wp_enqueue_script( 'customize-partial-refresh-pane' );
+	}
+
+	/**
+	 * Enqueue preview scripts.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 */
+	public function enqueue_preview_scripts() {
+		wp_enqueue_script( 'customize-partial-refresh-preview' );
+
+		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
+	}
+
+	/**
+	 * Export data in preview after it has finished rendering so that partials can be added at runtime.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 */
+	public function export_preview_data() {
+
+		$partials = array();
+		foreach ( $this->partials() as $partial ) {
+			$partials[ $partial->id ] = $partial->json();
+		}
+
+		$exports = array(
+			'partials'       => $partials,
+			'renderQueryVar' => self::RENDER_QUERY_VAR,
+			'l10n'           => array(
+				'shiftClickToEdit' => __( 'Shift-click to edit this element.' ),
+			),
+		);
+
+		// Export data to JS.
+		echo sprintf( '<script>var _customizePartialRefreshExports = %s;</script>', wp_json_encode( $exports ) );
+	}
+
+	/**
+	 * Register dynamically-created partials.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 * @see WP_Customize_Manager::add_dynamic_settings()
+	 *
+	 * @param array $partial_ids         The partial ID to add.
+	 * @return WP_Customize_Partial|null The instance or null if no filters applied.
+	 */
+	public function add_dynamic_partials( $partial_ids ) {
+		$new_partials = array();
+
+		foreach ( $partial_ids as $partial_id ) {
+
+			// Skip partials already created.
+			$partial = $this->get_partial( $partial_id );
+			if ( $partial ) {
+				continue;
+			}
+
+			$partial_args = false;
+			$partial_class = 'WP_Customize_Partial';
+
+			/**
+			 * Filter a dynamic partial's constructor args.
+			 *
+			 * For a dynamic partial to be registered, this filter must be employed
+			 * to override the default false value with an array of args to pass to
+			 * the WP_Customize_Setting constructor.
+			 *
+			 * @since 4.5.0
+			 *
+			 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
+			 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 */
+			$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
+			if ( false === $partial_args ) {
+				continue;
+			}
+
+			/**
+			 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
+			 *
+			 * @since 4.5.0
+			 *
+			 * @param string $partial_class WP_Customize_Setting or a subclass.
+			 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 * @param array  $partial_args  WP_Customize_Setting or a subclass.
+			 */
+			$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
+
+			$partial = new $partial_class( $this, $partial_id, $partial_args );
+
+			$this->add_partial( $partial );
+			$new_partials[] = $partial;
+		}
+		return $new_partials;
+	}
+
+	/**
+	 * Handle Ajax request to return the settings partial value.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 */
+	public function handle_render_partials_request() {
+		if ( empty( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
+			return;
+		}
+
+		$this->manager->remove_preview_signature();
+
+		if ( ! check_ajax_referer( 'preview-customize_' . $this->manager->get_stylesheet(), 'nonce', false ) ) {
+			status_header( 403 );
+			wp_send_json_error( 'nonce_check_fail' );
+		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
+			status_header( 403 );
+			wp_send_json_error( 'expected_customize_preview' );
+		} else if ( ! isset( $_POST['partials'] ) ) {
+			status_header( 400 );
+			wp_send_json_error( 'missing_partials' );
+		}
+		$partials = json_decode( wp_unslash( $_POST['partials'] ), true );
+		if ( ! is_array( $partials ) ) {
+			wp_send_json_error( 'malformed_partials' );
+		}
+		$this->add_dynamic_partials( array_keys( $partials ) );
+
+		// @todo Do wp_enqueue_scripts() so that we can gather the enqueued scripts and return them in the response?
+
+		$contents = array();
+		foreach ( $partials as $partial_id => $container_contexts ) {
+			if ( ! is_array( $container_contexts ) ) {
+				wp_send_json_error( 'malformed_container_contexts' );
+			}
+
+			$partial = $this->get_partial( $partial_id );
+			if ( ! $partial ) {
+				$contents[ $partial_id ] = null;
+				continue;
+			}
+
+			$contents[ $partial_id ] = array();
+			if ( empty( $container_contexts ) ) {
+				// Since there are no container contexts, render just once.
+				$contents[ $partial_id ][] = $partial->render( null );
+			} else {
+				foreach ( $container_contexts as $container_context ) {
+					$contents[ $partial_id ][] = $partial->render( $container_context );
+				}
+			}
+		}
+
+		$response = array(
+			'contents' => $contents,
+		);
+		// @todo Export scripts from wp_scripts()->queue? These are dangerous because of document.write(); we'd need to override the default implementation.
+		// @todo This may be out of scope and should instead be handled when a partial is registered.
+
+		wp_send_json_success( $response );
 	}
 }

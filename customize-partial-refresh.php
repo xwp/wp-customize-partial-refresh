@@ -10,7 +10,7 @@
  */
 
 /**
- * Copyright (c) 2015 XWP (https://xwp.co/)
+ * Copyright (c) 2016 XWP (https://xwp.co/)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License, version 2 or, at
@@ -28,7 +28,4 @@
  */
 
 require_once( dirname( __FILE__ ) . '/php/class-wp-customize-partial-refresh-plugin.php' );
-require_once( dirname( __FILE__ ) . '/php/class-wp-customize-selective-refresh.php' );
-require_once( dirname( __FILE__ ) . '/php/class-wp-customize-partial-refresh-widgets.php' );
-require_once( dirname( __FILE__ ) . '/php/class-wp-customize-partial-refresh-exception.php' );
 $GLOBALS['wp_customize_partial_refresh_plugin'] = new WP_Customize_Partial_Refresh_Plugin();
