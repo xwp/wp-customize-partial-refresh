@@ -21,6 +21,8 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * @param {Object} options.params
 		 * @param {jQuery} options.params.containerElement
 		 * @param {Object} options.params.navMenuArgs
+		 * @param {string} [options.params.navMenuArgs.theme_location]
+		 * @param {number} [options.params.navMenuArgs.menu]
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches;
@@ -88,16 +90,11 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				navMenuId = navMenuLocationSetting();
 			}
 
-			if ( partial.params.navMenuArgs.menu === navMenuId ) {
-				return true;
-			}
-			if ( navMenuId && 'nav_menu[' + navMenuId + ']' === setting.id ) {
-				return true;
-			}
-			if ( ( /^nav_menu_item\[/.test( setting.id ) && setting().nav_menu_term_id === navMenuId ) ) {
-				return true;
-			}
-			return false;
+			return (
+				( partial.params.navMenuArgs.menu === navMenuId ) ||
+				( navMenuId && 'nav_menu[' + navMenuId + ']' === setting.id ) ||
+				( /^nav_menu_item\[/.test( setting.id ) && setting().nav_menu_term_id === navMenuId )
+			);
 		},
 
 		/**
@@ -122,9 +119,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		}
 	});
 
-	// @todo Trigger the customize-preview-menu-refreshed (deprecated) event based on an underlying wp.customize partial-refreshed event.
-
-	api.partialConstructor.nav_menu = self.NavMenuPlacementPartial;
+	api.partialConstructor.nav_menu_placement = self.NavMenuPlacementPartial;
 
 	/**
 	 * Connect nav menu items with their corresponding controls in the pane.
@@ -143,8 +138,6 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			if ( ! e.shiftKey ) {
 				return;
 			}
-
-			// @todo Re-add the title attribute for editing.
 
 			navMenuItemParts = $( this ).attr( 'id' ).match( /^menu-item-(\d+)$/ );
 			if ( navMenuItemParts ) {

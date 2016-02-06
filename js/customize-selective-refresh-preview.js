@@ -7,7 +7,9 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		data: {
 			partials: {},
 			renderQueryVar: '',
-			l10n: {},
+			l10n: {
+				shiftClickToEdit: ''
+			},
 			refreshBuffer: 250
 		},
 		currentRequest: null
@@ -36,6 +38,14 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		id: null,
 
+		 /**
+		 * Constructor.
+		 *
+		 * @since 4.5.0
+		 * @param {string} id      - Partial ID.
+		 * @param {Object} options
+		 * @param {Object} options.params
+		 */
 		initialize: function( id, options ) {
 			var partial = this;
 			options = options || {};
@@ -82,8 +92,6 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		/**
 		 * Find all elements by the selector and return along with any context data supplied on the container.
-		 *
-		 * @todo Rename this to instances()?
 		 *
 		 * @return {Array.<Object>}
 		 */
@@ -152,6 +160,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		},
 
 		/**
+		 * Reference to the pending promise returned from self.requestPartial().
+		 *
 		 * @private
 		 */
 		_pendingRefreshPromise: null,
@@ -159,6 +169,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * Request the new partial and render it into the containers.
 		 *
+		 * @this {wp.customize.Partial}
 		 * @return {jQuery.Promise}
 		 */
 		refresh: function() {
@@ -219,7 +230,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 				content = wp.emoji.parse( content );
 			}
 
-			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children.
+			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children?
 			container.element.html( content );
 
 			container.element.removeClass( 'customize-partial-refreshing' );
@@ -287,7 +298,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	/**
 	 * Currently-requested partials and their associated deferreds.
 	 *
-	 * @type {Object}
+	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.Partial }>}
 	 */
 	self._pendingPartialRequests = {};
 
