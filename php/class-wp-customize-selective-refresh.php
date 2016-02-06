@@ -374,7 +374,7 @@ class WP_Customize_Selective_Refresh {
 		 *
 		 * @since 4.5.0
 		 *
-*@param WP_Customize_Selective_Refresh $this Manager.
+		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
 		 */
 		do_action( 'customize_render_partials_before', $this );
 
@@ -423,7 +423,7 @@ class WP_Customize_Selective_Refresh {
 		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
 		 * }
 		 *
-*@param WP_Customize_Selective_Refresh $this Manager.
+		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
 		 */
 		$response = apply_filters( 'customize_render_partials_response', $response, $this );
 

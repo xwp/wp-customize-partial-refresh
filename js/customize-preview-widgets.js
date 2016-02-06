@@ -1,14 +1,9 @@
-(function( wp, $ ){
+/* global _wpWidgetCustomizerPreviewSettings */
+wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( $, _, wp, api ) {
 
-	if ( ! wp || ! wp.customize ) { return; }
+	var self;
 
-	var api = wp.customize;
-
-	/**
-	 * wp.customize.WidgetCustomizerPreview
-	 *
-	 */
-	api.WidgetCustomizerPreview = {
+	self = {
 		renderedSidebars: {}, // @todo Make rendered a property of the Backbone model
 		renderedWidgets: {}, // @todo Make rendered a property of the Backbone model
 		registeredSidebars: [], // @todo Make a Backbone collection
@@ -17,7 +12,7 @@
 		preview: null,
 		l10n: {},
 
-		init: function () {
+		init: function() {
 			var self = this;
 
 			this.preview = api.preview;
@@ -30,35 +25,35 @@
 		/**
 		 * Calculate the selector for the sidebar's widgets based on the registered sidebar's info
 		 */
-		buildWidgetSelectors: function () {
+		buildWidgetSelectors: function() {
 			var self = this;
 
-			$.each( this.registeredSidebars, function ( i, sidebar ) {
+			$.each( this.registeredSidebars, function( i, sidebar ) {
 				var widgetTpl = [
-						sidebar.before_widget.replace('%1$s', '').replace('%2$s', ''),
+						sidebar.before_widget.replace( '%1$s', '' ).replace( '%2$s', '' ),
 						sidebar.before_title,
 						sidebar.after_title,
 						sidebar.after_widget
-					].join(''),
+					].join( '' ),
 					emptyWidget,
 					widgetSelector,
 					widgetClasses;
 
-				emptyWidget = $(widgetTpl);
-				widgetSelector = emptyWidget.prop('tagName');
-				widgetClasses = emptyWidget.prop('className');
+				emptyWidget = $( widgetTpl );
+				widgetSelector = emptyWidget.prop( 'tagName' );
+				widgetClasses = emptyWidget.prop( 'className' );
 
 				// Prevent a rare case when before_widget, before_title, after_title and after_widget is empty.
 				if ( ! widgetClasses ) {
 					return;
 				}
 
-				widgetClasses = widgetClasses.replace(/^\s+|\s+$/g, '');
+				widgetClasses = widgetClasses.replace( /^\s+|\s+$/g, '' );
 
 				if ( widgetClasses ) {
-					widgetSelector += '.' + widgetClasses.split(/\s+/).join('.');
+					widgetSelector += '.' + widgetClasses.split( /\s+/ ).join( '.' );
 				}
-				self.widgetSelectors.push(widgetSelector);
+				self.widgetSelectors.push( widgetSelector );
 			});
 		},
 
@@ -74,7 +69,7 @@
 			$body.find( '.widget-customizer-highlighted-widget' ).removeClass( 'widget-customizer-highlighted-widget' );
 
 			$widget.addClass( 'widget-customizer-highlighted-widget' );
-			setTimeout( function () {
+			setTimeout( function() {
 				$widget.removeClass( 'widget-customizer-highlighted-widget' );
 			}, 500 );
 		},
@@ -85,16 +80,16 @@
 		 */
 		highlightControls: function() {
 			var self = this,
-				selector = this.widgetSelectors.join(',');
+				selector = this.widgetSelectors.join( ',' );
 
-			$(selector).attr( 'title', this.l10n.widgetTooltip );
+			$( selector ).attr( 'title', this.l10n.widgetTooltip );
 
-			$(document).on( 'mouseenter', selector, function () {
+			$( document ).on( 'mouseenter', selector, function() {
 				self.preview.send( 'highlight-widget-control', $( this ).prop( 'id' ) );
 			});
 
 			// Open expand the widget control when shift+clicking the widget element
-			$(document).on( 'click', selector, function ( e ) {
+			$( document ).on( 'click', selector, function( e ) {
 				if ( ! e.shiftKey ) {
 					return;
 				}
@@ -105,15 +100,10 @@
 		}
 	};
 
-	$(function () {
-		var settings = window._wpWidgetCustomizerPreviewSettings;
-		if ( ! settings ) {
-			return;
-		}
-
-		$.extend( api.WidgetCustomizerPreview, settings );
-
-		api.WidgetCustomizerPreview.init();
+	api.bind( 'preview-ready', function() {
+		$.extend( self, _wpWidgetCustomizerPreviewSettings );
+		self.init();
 	});
 
-})( window.wp, jQuery );
+	return self;
+})( jQuery, _, wp, wp.customize );
