@@ -350,7 +350,18 @@ class WP_Customize_Partial_Refresh_Plugin {
 		}
 		$this->add_dynamic_partials( array_keys( $partials ) );
 
-		// @todo Do wp_enqueue_scripts() so that we can gather the enqueued scripts and return them in the response?
+		/**
+		 * Do setup before rendering each partial.
+		 *
+		 * Plugins may do things like wp_enqueue_scripts() to gather a list of
+		 * the scripts and styles which may get enqueued in the response.
+		 *
+		 * @todo Eventually this should automatically by default do wp_enqueue_scripts(). See below.
+		 *
+		 * @since 4.5.0
+		 * @param WP_Customize_Partial_Refresh_Plugin $this Manager.
+		 */
+		do_action( 'customize_render_partials_before', $this );
 
 		$contents = array();
 		foreach ( $partials as $partial_id => $container_contexts ) {
@@ -378,8 +389,27 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$response = array(
 			'contents' => $contents,
 		);
-		// @todo Export scripts from wp_scripts()->queue? These are dangerous because of document.write(); we'd need to override the default implementation.
-		// @todo This may be out of scope and should instead be handled when a partial is registered.
+
+		/**
+		 * Filter the response from rendering the partials.
+		 *
+		 * This is similar to the <code>infinite_scroll_results</code> filter in Jetpack,
+		 * and the <code>The_Neverending_Home_Page::filter_infinite_scroll_results()</code>
+		 * function which will amend the response with scripts and styles that are enqueued
+		 * so that the client can inject these new dependencies into the document.
+		 *
+		 * @todo This method should eventually go ahead and include the enqueued scripts and styles by default. Beware of any sripts that do document.write().
+		 *
+		 * @since 4.5.0
+		 *
+		 * @param array $response {
+		 *     Response.
+		 *
+		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
+		 * }
+		 * @param WP_Customize_Partial_Refresh_Plugin $this Manager.
+		 */
+		$response = apply_filters( 'customize_render_partials_response', $response, $this );
 
 		wp_send_json_success( $response );
 	}
