@@ -428,4 +428,3 @@ wp.customize.partialPreviewWidgets = ( function ( $ ) {
 
 	return self;
 }( jQuery ));
-

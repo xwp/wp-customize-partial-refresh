@@ -1,4 +1,4 @@
-/* global jQuery, JSON, _customizeSelectiveRefreshExports, _wpmejsSettings */
+/* global jQuery, JSON, _customizeSelectiveRefreshExports */
 wp.customize.selectiveRefresh = ( function( $, api ) {
 	'use strict';
 
@@ -8,7 +8,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			partials: {},
 			renderQueryVar: '',
 			l10n: {},
-			refreshBuffer: 250 // @todo Increase to 250
+			refreshBuffer: 250
 		},
 		currentRequest: null
 	};
@@ -214,9 +214,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			}
 			content = container.content;
 
-			// @todo Jetpack infinite scroll needs to use the same mechanism to set up content.
-			// @todo Initialize the MediaElement.js player for any posts not previously initialized
-			// @todo Will Jetpack do this for us as well?
+			// @todo See multi-line comment below for how this logic should be tied to a new standard event that fires when
 			if ( wp && wp.emoji && wp.emoji.parse ) {
 				content = wp.emoji.parse( content );
 			}
@@ -224,52 +222,21 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children.
 			container.element.html( content );
 
-			partial.setupMediaElements( container.element, content );
-
 			container.element.removeClass( 'customize-partial-refreshing' );
 
+			/*
+			 * Trigger an event so that dynamic elements can be re-built.
+			 *
+			 * @todo This should be standardized for use in WordPress generally, to be used instead of the post-load event used in Jetpack's Infinite Scrolling or the o2 plugin.
+			 *
+			 * Core can add an event handler to automatically run wp-emoji.parse() on this event instead of copying the code above.
+			 * Core can add another event handler for initializing MediaElement.js elements. See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
+			 *
+			 * The post-load event below is re-using what Jetpack introduces, with the introduction of the target property.
+			 * It is not ideal because it is not just posts that are selectively refreshed, but any element.
+			 */
+			$( document.body ).trigger( 'post-load', { html: content, target: container.element } );
 			return true;
-		},
-
-		/**
-		 * Adapted from Scroller.prototype.initializeMejs in Jetpack Infinite Scroll module
-		 *
-		 * @link https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
-		 * @todo This needs to lazy-load ME.js
-		 *
-		 * @param container
-		 * @param partialHtml
-		 */
-		setupMediaElements: function( container, partialHtml ) {
-			var settings = {};
-
-			// Are there media players in the incoming set of posts?
-			if ( ! partialHtml || -1 === partialHtml.indexOf( 'wp-audio-shortcode' ) && -1 === partialHtml.indexOf( 'wp-video-shortcode' ) ) {
-				return;
-			}
-
-			// Don't bother if mejs isn't loaded for some reason
-			if ( 'undefined' === typeof mejs ) {
-				return;
-			}
-
-			// Adapted from wp-includes/js/mediaelement/wp-mediaelement.js
-			// Modified to not initialize already-initialized players, as Mejs doesn't handle that well
-
-			if ( 'undefined' !== typeof _wpmejsSettings ) {
-				settings.pluginPath = _wpmejsSettings.pluginPath;
-			}
-
-			settings.success = function( mejs ) {
-				var autoplay = mejs.attributes.autoplay && 'false' !== mejs.attributes.autoplay;
-				if ( 'flash' === mejs.pluginType && autoplay ) {
-					mejs.addEventListener( 'canplay', function() {
-						mejs.play();
-					}, false );
-				}
-			};
-
-			container.find( '.wp-audio-shortcode, .wp-video-shortcode' ).not( '.mejs-container' ).mediaelementplayer( settings );
 		},
 
 		/**
