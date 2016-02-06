@@ -8,37 +8,39 @@
 /**
  * This class is a replacement for the rendering methods in WP_Customize_Nav_Menus.
  *
- * This will be integrated into WP_Customize_Nav_Menus during core merge.
+ * This will be integrated into WP_Customize_Nav_Menus during #coremerge.
  */
 class WP_Customize_Nav_Menus_Partial_Refresh {
 
 	/**
-	 * Plugin instance.
-	 *
-	 * This will not be included in core merge.
+	 * Manager
 	 *
 	 * @access public
-	 * @var WP_Customize_Partial_Refresh_Plugin
+	 * @var WP_Customize_Manager
 	 */
-	public $plugin;
+	public $manager;
 
 	/**
 	 * WP_Customize_Nav_Menu_Selective_Refresh constructor.
 	 *
-	 * This will not be included in core merge.
+	 * This will not be included in #coremerge.
 	 *
-	 * @param WP_Customize_Partial_Refresh_Plugin $plugin  Plugin instance.
+	 * @param WP_Customize_Manager $manager  Plugin instance.
 	 */
-	function __construct( WP_Customize_Partial_Refresh_Plugin $plugin ) {
-		$this->plugin = $plugin;
+	function __construct( WP_Customize_Manager $manager ) {
+		$this->manager = $manager;
 
+		if ( ! isset( $manager->selective_refresh ) ) {
+			return;
+		}
 		add_action( 'customize_register', array( $this, 'override_core_nav_menu_refresh' ) );
+		add_filter( 'customize_dynamic_partial_args', array( $this, 'customize_dynamic_partial_args' ), 10, 2 );
 	}
 
 	/**
 	 * Disable nav menu partial refresh as bundled in Core.
 	 *
-	 * This will not be included in core merge.
+	 * This will not be included in #coremerge.
 	 *
 	 * @param WP_Customize_Manager $wp_customize Manager.
 	 */
@@ -46,7 +48,6 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 		if ( ! empty( $wp_customize->nav_menus ) ) {
 			remove_action( 'customize_preview_init', array( $wp_customize->nav_menus, 'customize_preview_init' ) );
 			add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
-			add_filter( 'customize_dynamic_partial_args', array( $this, 'customize_dynamic_partial_args' ), 10, 2 );
 		}
 	}
 
@@ -131,6 +132,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 * @since 4.3.0
 	 * @access public
 	 * @see wp_nav_menu()
+	 * @see WP_Customize_Widgets_Partial_Refresh::filter_dynamic_sidebar_params()
 	 *
 	 * @param array $args An array containing wp_nav_menu() arguments.
 	 * @return array Arguments.
@@ -270,6 +272,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 		$nav_menu_args_hmac = $nav_menu_args['args_hmac'];
 		unset( $nav_menu_args['args_hmac'] );
 
+		ksort( $nav_menu_args );
 		if ( ! hash_equals( $this->hash_nav_menu_args( $nav_menu_args ), $nav_menu_args_hmac ) ) {
 			return false; // Error: args_hmac_mismatch.
 		}

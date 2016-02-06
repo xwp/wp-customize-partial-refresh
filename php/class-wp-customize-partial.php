@@ -1,9 +1,20 @@
 <?php
 /**
+ * WordPress Customize Partial class
+ *
+ * @package WordPress
+ * @subpackage Customize
+ * @since 4.5.0
+ */
+
+/**
+ * Customize Partial class.
+ *
  * Representation of a rendered region in the previewed page that gets
  * selectively refreshed when an associated setting is changed.
+ * This class is analogous of WP_Customize_Control.
  *
- * This class is analagous of WP_Customize_Control.
+ * @since 4.5.0
  */
 class WP_Customize_Partial {
 
@@ -15,17 +26,6 @@ class WP_Customize_Partial {
 	 * @var WP_Customize_Manager
 	 */
 	public $manager;
-
-	/**
-	 * Plugin instance.
-	 *
-	 * @todo Note that this will be obsolete once features are added to WP_Customize_Manager in the core merge.
-	 *
-	 * @since 4.5.0
-	 * @access public
-	 * @var WP_Customize_Partial_Refresh_Plugin
-	 */
-	public $plugin;
 
 	/**
 	 * Unique identifier for the partial.
@@ -107,15 +107,17 @@ class WP_Customize_Partial {
 	 *
 	 * If `$args['settings']` is not defined, use the $id as the setting ID.
 	 *
-	 * @param WP_Customize_Partial_Refresh_Plugin $plugin Customize Partial Refresh plugin instance. @todo This will be $manager in the core merge.
-	 * @param string                              $id      Control ID.
-	 * @param array                               $args    {
+	 * @since 4.5.0
+	 *
+	 * @param WP_Customize_Manager $manager Customize Partial Refresh plugin instance.
+	 * @param string               $id      Control ID.
+	 * @param array                $args    {
 	 *     Optional. Arguments to override class property defaults.
 	 *
 	 *     @type array|string  $settings        All settings IDs tied to the partial. If undefined, `$id` will be used.
 	 * }
 	 */
-	public function __construct( $plugin, $id, $args = array() ) {
+	public function __construct( $manager, $id, $args = array() ) {
 		$keys = array_keys( get_object_vars( $this ) );
 		foreach ( $keys as $key ) {
 			if ( isset( $args[ $key ] ) ) {
@@ -123,8 +125,7 @@ class WP_Customize_Partial {
 			}
 		}
 
-		$this->plugin = $plugin; // @todo This will be $manager in the Core merge.
-		$this->manager = $plugin->manager;
+		$this->manager = $manager;
 		$this->id = $id;
 		if ( empty( $this->render_callback ) ) {
 			$this->render_callback = array( $this, 'render_callback' );
@@ -148,8 +149,7 @@ class WP_Customize_Partial {
 	 * @access public
 	 *
 	 * @param array $container_context Optional array of context data associated with the target container.
-	 *
-	 * @return string|false The rendered partial as a string, or false if no render applied.
+	 * @return string|array|false The rendered partial as a string, raw data array (for client-side JS template), or false if no render applied.
 	 */
 	final public function render( $container_context = array() ) {
 		$partial = $this;
@@ -161,7 +161,7 @@ class WP_Customize_Partial {
 			$ob_render = ob_get_clean();
 
 			if ( null !== $return_render && '' !== $ob_render ) {
-				_doing_it_wrong( __FUNCTION__, __( 'Partial render must echo the content or return the content string, but not both.' ), '4.5.0' );
+				_doing_it_wrong( __FUNCTION__, __( 'Partial render must echo the content or return the content string (or array), but not both.' ), '4.5.0' );
 			}
 
 			// Note that the string return takes precedence because the $ob_render may just include PHP warnings or notices.
@@ -175,7 +175,9 @@ class WP_Customize_Partial {
 		/**
 		 * Filter partial rendering.
 		 *
-		 * @param string|false         $rendered          The partial value. Default false.
+		 * @since 4.5.0
+		 *
+		 * @param string|array|false   $rendered          The partial value. Default false.
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
@@ -184,7 +186,9 @@ class WP_Customize_Partial {
 		/**
 		 * Filter partial rendering by the partial ID.
 		 *
-		 * @param string|false         $rendered          The partial value. Default false.
+		 * @since 4.5.0
+		 *
+		 * @param string|array|false   $rendered          The partial value. Default false.
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
@@ -197,14 +201,18 @@ class WP_Customize_Partial {
 	 * Default callback used when invoking WP_Customize_Control::render().
 	 *
 	 * Note that this method may echo the partial *or* return the partial as
-	 * a string, but not both. Output buffering is performed when this is called.
+	 * a string or array, but not both. Output buffering is performed when this
+	 * is called. Subclasses can override this with their specific logic, or they
+	 * may provide an 'render_callback' argument to the constructor.
 	 *
-	 * Subclasses can override this with their specific logic, or they may
-	 * provide an 'render_callback' argument to the constructor.
+	 * This method may return an HTML string for straight DOM injection, or it
+	 * may return an array for supporting Partial JS subclasses to render by
+	 * applying to client-side templating.
 	 *
 	 * @access public
+	 * @since 4.5.0
 	 *
-	 * @return string|false
+	 * @return string|array|false
 	 */
 	public function render_callback() {
 		return false;
@@ -212,6 +220,8 @@ class WP_Customize_Partial {
 
 	/**
 	 * Get the data to export to the client via JSON.
+	 *
+	 * @since 4.5.0
 	 *
 	 * @return array Array of parameters passed to the JavaScript.
 	 */

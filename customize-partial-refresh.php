@@ -3,10 +3,13 @@
  * Plugin Name: Customize Partial Refresh
  * Description: Refresh parts of a Customizer preview instead of reloading the entire page when a setting changed without transport=postMessage.
  * Plugin URI: https://github.com/xwp/wp-customize-partial-refresh
- * Version: 0.4.3
+ * Version: 0.5
  * Author: XWP, Weston Ruter
  * Author URI: https://xwp.co/
  * License: GPLv2+
+ *
+ * @package WordPress
+ * @subpackage Customize
  */
 
 /**
@@ -27,5 +30,27 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-require_once( dirname( __FILE__ ) . '/php/class-wp-customize-partial-refresh-plugin.php' );
-$GLOBALS['wp_customize_partial_refresh_plugin'] = new WP_Customize_Partial_Refresh_Plugin();
+/**
+ * Bootstrap.
+ *
+ * This will be part of the WP_Customize_Manager::__construct() or another such class constructor in #coremerge.
+ *
+ * @param array                $components   Components.
+ * @param WP_Customize_Manager $wp_customize Manager.
+ * @return array Components.
+ */
+function customize_partial_refresh_filter_customize_loaded_components( $components, $wp_customize ) {
+
+	require_once dirname( __FILE__ ) . '/php/class-wp-customize-selective-refresh.php';
+	require_once dirname( __FILE__ ) . '/php/class-wp-customize-partial.php';
+	require_once dirname( __FILE__ ) . '/php/class-wp-customize-nav-menus-partial-refresh.php';
+	require_once dirname( __FILE__ ) . '/php/class-wp-customize-widgets-partial-refresh.php';
+
+	$wp_customize->selective_refresh = new WP_Customize_Selective_Refresh( $wp_customize );
+	$wp_customize->selective_refresh->nav_menus = new WP_Customize_Nav_Menus_Partial_Refresh( $wp_customize );
+	$wp_customize->selective_refresh->widgets = new WP_Customize_Widgets_Partial_Refresh( $wp_customize );
+
+	return $components;
+}
+
+add_filter( 'customize_loaded_components', 'customize_partial_refresh_filter_customize_loaded_components', 10, 2 );

@@ -8,7 +8,7 @@ class Test_Ajax_WP_Customize_Selective_Refresh extends WP_Ajax_UnitTestCase {
 	public $wp_customize;
 
 	/**
-	 * @var WP_Customize_Partial_Refresh_Plugin
+	 * @var WP_Customize_Selective_Refresh
 	 */
 	public $plugin;
 

@@ -1,13 +1,38 @@
 <?php
+/**
+ * WordPress Customize Selective Refresh class
+ *
+ * @package WordPress
+ * @subpackage Customize
+ * @since 4.5.0
+ */
 
-class WP_Customize_Partial_Refresh_Plugin {
+/**
+ * WordPress Customize Selective Refresh class
+ *
+ * This may be irrelevant to #coremerge since this will be merged with WP_Customize_Manager,
+ * unless there is a new class introduced for managing partials as a component.
+ *
+ * @since 4.5.0
+ */
+class WP_Customize_Selective_Refresh {
 
+	/**
+	 * Not relevant to #coremerge.
+	 */
 	const VERSION = '0.1';
 
-	const RENDER_QUERY_VAR = 'wp_customize_partials_render';
+	/**
+	 * Query var used in requests to render partials.
+	 *
+	 * @since 4.5.0
+	 */
+	const RENDER_QUERY_VAR = 'wp_customize_render_partials';
 
 	/**
 	 * Plugin directory URL.
+	 *
+	 * This is irrelevant to #coremerge.
 	 *
 	 * @var string
 	 */
@@ -23,7 +48,7 @@ class WP_Customize_Partial_Refresh_Plugin {
 	/**
 	 * Selective refresh for nav menus.
 	 *
-	 * @todo This will be integrated into WP_Customize_Nav_Menus
+	 * This will be integrated into WP_Customize_Nav_Menus in #coremerge.
 	 *
 	 * @var WP_Customize_Nav_Menus_Partial_Refresh
 	 */
@@ -32,7 +57,7 @@ class WP_Customize_Partial_Refresh_Plugin {
 	/**
 	 * Selective refresh for widgets.
 	 *
-	 * @todo This will be integrated into WP_Customize_Widgets
+	 * This will be integrated into WP_Customize_Widgets in #coremerge.
 	 *
 	 * @var WP_Customize_Widgets_Partial_Refresh
 	 */
@@ -40,52 +65,38 @@ class WP_Customize_Partial_Refresh_Plugin {
 
 	/**
 	 * Plugin bootstrap for Partial Refresh functionality.
+	 *
+	 * @since 4.5.0
+	 *
+	 * @param WP_Customize_Manager $manager Manager.
 	 */
-	function __construct() {
-		$this->dir_url = plugin_dir_url( dirname( __FILE__ ) );
+	public function __construct( WP_Customize_Manager $manager ) {
+		$this->dir_url = plugin_dir_url( dirname( __FILE__ ) ); /* Not relevant to #coremerge */
+
+		$this->manager = $manager;
+
+		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
+		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
 
 		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
-		add_filter( 'customize_loaded_components', array( $this, 'filter_customize_loaded_components' ), 10, 2 );
 	}
 
 	/**
 	 * Get version.
 	 *
+	 * Not relevant to #coremerge.
+	 *
 	 * @return string
 	 */
 	function get_version() {
-		// @todo Read from plugin metadata block
 		return self::VERSION;
 	}
 
 	/**
-	 * Bootstrap.
-	 *
-	 * @param array                $components   Components.
-	 * @param WP_Customize_Manager $wp_customize Manager.
-	 * @return array Components.
-	 */
-	function filter_customize_loaded_components( $components, $wp_customize ) {
-		$this->manager = $wp_customize;
-
-		require_once dirname( __FILE__ ) . '/class-wp-customize-partial.php';
-		require_once dirname( __FILE__ ) . '/class-wp-customize-nav-menus-partial-refresh.php';
-
-		// @todo require_once dirname( __FILE__ ) . '/class-wp-customize-widget-selective-refresh.php';
-
-		add_action( 'customize_controls_print_footer_scripts', array( $this, 'enqueue_pane_scripts' ) );
-		add_action( 'customize_preview_init', array( $this, 'init_preview' ) );
-
-		$this->nav_menus = new WP_Customize_Nav_Menus_Partial_Refresh( $this );
-
-		// @todo $this->widgets = new WP_Customize_Widgets_Partial_Refresh( $this->manager );
-
-		return $components;
-	}
-
-	/**
 	 * Register scripts.
+	 *
+	 * This will be moved to script-loader.php in #coremerge.
 	 *
 	 * @param WP_Scripts $wp_scripts Scripts.
 	 */
@@ -108,10 +119,19 @@ class WP_Customize_Partial_Refresh_Plugin {
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+
+		$handle = 'customize-preview-widgets';
+		$src = $this->dir_url . 'js/customize-preview-widgets.js';
+		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$in_footer = true;
+		$wp_scripts->remove( $handle );
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 	}
 
 	/**
 	 * Register styles.
+	 *
+	 * This will be moved to script-loader.php in the #coremerge.
 	 *
 	 * @param WP_Styles $wp_styles Styles.
 	 */
@@ -119,8 +139,6 @@ class WP_Customize_Partial_Refresh_Plugin {
 
 	/**
 	 * Registered instances of WP_Customize_Partial.
-	 *
-	 * @todo This would be added to WP_Customize_Manager.
 	 *
 	 * @since 4.5.0
 	 * @access protected
@@ -130,8 +148,6 @@ class WP_Customize_Partial_Refresh_Plugin {
 
 	/**
 	 * Get the registered partials.
-	 *
-	 * @todo This would be added to WP_Customize_Manager.
 	 *
 	 * @since 4.5.0
 	 * @access public
@@ -144,8 +160,6 @@ class WP_Customize_Partial_Refresh_Plugin {
 
 	/**
 	 * Add a customize partial.
-	 *
-	 * @todo This would be added to WP_Customize_Manager.
 	 *
 	 * @since 4.5.0
 	 * @access public
@@ -359,7 +373,8 @@ class WP_Customize_Partial_Refresh_Plugin {
 		 * @todo Eventually this should automatically by default do wp_enqueue_scripts(). See below.
 		 *
 		 * @since 4.5.0
-		 * @param WP_Customize_Partial_Refresh_Plugin $this Manager.
+		 *
+*@param WP_Customize_Selective_Refresh $this Manager.
 		 */
 		do_action( 'customize_render_partials_before', $this );
 
@@ -407,7 +422,8 @@ class WP_Customize_Partial_Refresh_Plugin {
 		 *
 		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
 		 * }
-		 * @param WP_Customize_Partial_Refresh_Plugin $this Manager.
+		 *
+*@param WP_Customize_Selective_Refresh $this Manager.
 		 */
 		$response = apply_filters( 'customize_render_partials_response', $response, $this );
 
