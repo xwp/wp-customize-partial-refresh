@@ -82,6 +82,8 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	/**
 	 * Filter args for nav_menu partials.
 	 *
+	 * @since 4.5.0
+	 *
 	 * @param array|false $partial_args Partial args.
 	 * @param string      $partial_id  Partial ID.
 	 * @return array Partial args
@@ -97,7 +99,6 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 				array(
 					'type' => 'nav_menu_placement',
 					'render_callback' => array( $this, 'render_nav_menu_partial' ),
-					// @todo 'container_inclusive' => true, ??
 				)
 			);
 		}
@@ -134,7 +135,6 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	 *
 	 * @since 4.3.0
 	 * @access public
-	 *
 	 * @see wp_nav_menu()
 	 *
 	 * @param array $args An array containing wp_nav_menu() arguments.
@@ -240,22 +240,18 @@ class WP_Customize_Nav_Menu_Selective_Refresh {
 	public function customize_preview_enqueue_deps() {
 		wp_enqueue_script( 'customize-preview-nav-menus' ); // Note that we have overridden this.
 		wp_enqueue_style( 'customize-preview' );
-
-		add_action( 'wp_print_footer_scripts', array( $this, 'export_preview_data' ) );
 	}
 
 	/**
 	 * Export data from PHP to JS.
 	 *
+	 * @deprecated
 	 * @since 4.3.0
+	 * @since 4.5.0 Obsolete.
 	 * @access public
 	 */
 	public function export_preview_data() {
-
-		// Why not wp_localize_script? Because we're not localizing, and it forces values into strings.
-		$exports = array();
-
-		printf( '<script>var _wpCustomizePreviewNavMenusExports = %s;</script>', wp_json_encode( $exports ) );
+		_deprecated_function( __METHOD__, '4.5.0' );
 	}
 
 	/**

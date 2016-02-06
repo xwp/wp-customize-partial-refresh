@@ -4,8 +4,6 @@
  * selectively refreshed when an associated setting is changed.
  *
  * This class is analagous of WP_Customize_Control.
- *
- * @todo Just call this a WP_Customize_Template_Part?
  */
 class WP_Customize_Partial {
 
@@ -103,15 +101,6 @@ class WP_Customize_Partial {
 	public $fallback_refresh = true;
 
 	/**
-	 * Whether the partial render includes the container element, and whether to replace it along with the contents.
-	 *
-	 * @todo Allow this to be 'auto' by default, which means that if the rendered response has a root element and it has the same type, ID, and classNames as container, then just update contents?
-	 * @todo public $container_inclusive = false; ?
-	 *
-	 * @var bool
-	 */
-
-	/**
 	 * Constructor.
 	 *
 	 * Supplied `$args` override class property defaults.
@@ -159,7 +148,6 @@ class WP_Customize_Partial {
 	 * @access public
 	 *
 	 * @param array $container_context Optional array of context data associated with the target container.
-	 * @todo How many mechanisms do we want to provide? render_callback, and filters, and overridable method?
 	 *
 	 * @return string|false The rendered partial as a string, or false if no render applied.
 	 */

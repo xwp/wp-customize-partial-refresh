@@ -24,6 +24,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 *
 	 * @class
 	 * @augments wp.customize.Class
+	 * @since 4.5.0
 	 *
 	 * @param {string} id                              Unique identifier for the control instance.
 	 * @param {object} options                         Options hash for the control instance.
@@ -42,7 +43,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * Constructor.
 		 *
 		 * @since 4.5.0
-		 * @param {string} id      - Partial ID.
+		 *
+		 * @param {string} id - Partial ID.
 		 * @param {Object} options
 		 * @param {Object} options.params
 		 */
@@ -71,6 +73,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		/**
 		 * Set up the partial.
+		 *
+		 * @since 4.5.0
 		 */
 		ready: function() {
 			var partial = this;
@@ -93,6 +97,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * Find all elements by the selector and return along with any context data supplied on the container.
 		 *
+		 * @since 4.5.0
+		 *
 		 * @return {Array.<Object>}
 		 */
 		containers: function() {
@@ -109,6 +115,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * Get list of setting IDs related to this partial.
 		 *
+		 * @since 4.5.0
+		 *
 		 * @return {String[]}
 		 */
 		settings: function() {
@@ -124,6 +132,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		/**
 		 * Return whether the setting is related to the partial.
+		 *
+		 * @since 4.5.0
 		 *
 		 * @param {wp.customize.Value|string} setting  ID or object for setting.
 		 * @return {boolean} Whether the setting is related to the partial.
@@ -143,6 +153,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * Show the control to modify this partial's setting(s).
 		 *
 		 * This may be overridden for inline editing.
+		 *
+		 * @since 4.5.0
 		 */
 		showControl: function() {
 			var partial = this, settingId = partial.params.primarySetting;
@@ -154,6 +166,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		/**
 		 * Prepare container for selective refresh.
+		 *
+		 * @since 4.5.0
 		 */
 		prepareContainer: function( container ) {
 			container.element.addClass( 'customize-partial-refreshing' );
@@ -162,12 +176,15 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * Reference to the pending promise returned from self.requestPartial().
 		 *
+		 * @since 4.5.0
 		 * @private
 		 */
 		_pendingRefreshPromise: null,
 
 		/**
 		 * Request the new partial and render it into the containers.
+		 *
+		 * @since 4.5.0
 		 *
 		 * @this {wp.customize.Partial}
 		 * @return {jQuery.Promise}
@@ -206,6 +223,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * Prepare containers for selective refresh.
 		 *
 		 * @todo Change args to be positional for closer parity with render filters? $rendered, $partial, $container_context
+		 * @since 4.5.0
 		 *
 		 * @param {object}         container
 		 * @param {jQuery}         [container.element] - This param will be empty if there was no element matching the selector.
@@ -254,6 +272,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * Handle fail to render partial.
 		 *
 		 * The first argument is either the failing jqXHR or an Error object, and the second argument is the array of containers.
+		 *
+		 * @since 4.5.0
 		 */
 		fallback: function() {
 			var partial = this;
@@ -261,11 +281,12 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 				self.requestFullRefresh();
 			}
 		}
-
 	} );
 
 	/**
 	 * Mapping of type names to Partial constructor subclasses.
+	 *
+	 * @since 4.5.0
 	 *
 	 * @type {Object.<string, wp.customize.Partial>}
 	 */
@@ -276,7 +297,9 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	/**
 	 * Get the POST vars for a Customizer preview request.
 	 *
+	 * @since 4.5.0
 	 * @see wp.customize.previewer.query()
+	 *
 	 * @return {object}
 	 */
 	self.getCustomizeQuery = function() {
@@ -298,6 +321,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	/**
 	 * Currently-requested partials and their associated deferreds.
 	 *
+	 * @since 4.5.0
 	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.Partial }>}
 	 */
 	self._pendingPartialRequests = {};
@@ -305,6 +329,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	/**
 	 * Timeout ID for the current requesr, or null if no request is current.
 	 *
+	 * @since 4.5.0
 	 * @type {number|null}
 	 * @private
 	 */
@@ -313,6 +338,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	/**
 	 * Current jqXHR for the request to the partials.
 	 *
+	 * @since 4.5.0
 	 * @type {jQuery.jqXHR|null}
 	 * @private
 	 */
@@ -323,12 +349,17 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 *
 	 * When selective refresh is embedded in the context of frontend editing, this request
 	 * must fail or else changes will be lost, unless transactions are implemented.
+	 *
+	 * @since 4.5.0
 	 */
 	self.requestFullRefresh = function() {
 		api.preview.send( 'refresh' );
 	};
 
 	/**
+	 * Request a re-rendering of a partial.
+	 *
+	 * @since 4.5.0
 	 *
 	 * @param {wp.customize.Partial} partial
 	 * @return {jQuery.Promise}
