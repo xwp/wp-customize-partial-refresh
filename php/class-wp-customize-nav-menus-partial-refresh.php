@@ -58,24 +58,6 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 
 	/**
-	 * The number of wp_nav_menu() calls which have happened in the preview.
-	 *
-	 * @since 4.3.0
-	 * @access public
-	 * @var int
-	 */
-	public $preview_nav_menu_instance_number = 0;
-
-	/**
-	 * Nav menu args used for each instance.
-	 *
-	 * @since 4.3.0
-	 * @access public
-	 * @var array
-	 */
-	public $preview_nav_menu_instance_args = array();
-
-	/**
 	 * Filter args for nav_menu partials.
 	 *
 	 * @since 4.5.0
@@ -95,6 +77,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 				array(
 					'type' => 'nav_menu_placement',
 					'render_callback' => array( $this, 'render_nav_menu_partial' ),
+					'container_inclusive' => true,
 				)
 			);
 		}
@@ -115,18 +98,6 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	}
 
 	/**
-	 * Whether the wp_nav_menu preview filters should be suspended.
-	 *
-	 * @see WP_Customize_Nav_Menu_Selective_Refresh::filter_wp_nav_menu_args()
-	 * @see WP_Customize_Nav_Menu_Selective_Refresh::filter_wp_nav_menu
-	 *
-	 * @since 4.5.0
-	 * @access private
-	 * @var bool
-	 */
-	protected $suspended_wp_nav_menu_filters = false;
-
-	/**
 	 * Keep track of the arguments that are being passed to wp_nav_menu().
 	 *
 	 * @since 4.3.0
@@ -138,10 +109,6 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 * @return array Arguments.
 	 */
 	public function filter_wp_nav_menu_args( $args ) {
-		if ( $this->suspended_wp_nav_menu_filters ) {
-			return $args;
-		}
-
 		$can_partial_refresh = (
 			! empty( $args['echo'] )
 			&&
@@ -167,9 +134,6 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 
 		$exported_args = $args;
 
-		$this->preview_nav_menu_instance_number += 1;
-		$args['instance_number'] = $this->preview_nav_menu_instance_number;
-
 		// Replace object menu arg with a term_id menu arg, as this exports better to JS and is easier to compare hashes.
 		if ( ! empty( $exported_args['menu'] ) && is_object( $exported_args['menu'] ) ) {
 			$exported_args['menu'] = $exported_args['menu']->term_id;
@@ -178,7 +142,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 		ksort( $exported_args );
 		$exported_args['args_hmac'] = $this->hash_nav_menu_args( $exported_args );
 
-		$this->preview_nav_menu_instance_args[ $this->preview_nav_menu_instance_number ] = $exported_args;
+		$args['customize_preview_nav_menus_args']  = $exported_args;
 
 		return $args;
 	}
@@ -196,16 +160,12 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 * @return null
 	 */
 	public function filter_wp_nav_menu( $nav_menu_content, $args ) {
-		if ( $this->suspended_wp_nav_menu_filters ) {
-			return $nav_menu_content;
-		}
-
-		if ( ! empty( $args->instance_number ) ) {
+		if ( ! empty( $args->customize_preview_nav_menus_args ) ) {
 			$nav_menu_content = preg_replace(
 				'#^(<\w+)#',
 				sprintf(
 					'$1 data-customize-nav-menu-args="%s"',
-					esc_attr( wp_json_encode( $this->preview_nav_menu_instance_args[ $args->instance_number ] ) )
+					esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) )
 				),
 				$nav_menu_content,
 				1 // Only replace first.
@@ -277,18 +237,9 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 			return false; // Error: args_hmac_mismatch.
 		}
 
-		$nav_menu_args['echo'] = false;
-
-		$this->suspended_wp_nav_menu_filters = true;
-		$container = wp_nav_menu( $nav_menu_args );
-		$this->suspended_wp_nav_menu_filters = false;
-
-		/*
-		 * Unwrap the container to return the contents. This could be done
-		 * automatically on the JS side, by checking if the returned value
-		 * contains a root element that has the same element name, ID and/or classes.
-		 */
-		$content = preg_replace( '#^\s*<(\w+)[^>]*?>(.+)</\1>\s*$#s', '$2', $container );
+		ob_start();
+		wp_nav_menu( $nav_menu_args );
+		$content = ob_get_clean();
 
 		return $content;
 	}

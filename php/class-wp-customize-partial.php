@@ -40,6 +40,18 @@ class WP_Customize_Partial {
 	public $id;
 
 	/**
+	 * Parsed ID.
+	 *
+	 * @since 4.5.0
+	 * @access private
+	 * @var array {
+	 *     @type string $base ID base.
+	 *     @type array  $keys Keys for multidimensional.
+	 * }
+	 */
+	protected $id_data = array();
+
+	/**
 	 * Type of this partial.
 	 *
 	 * @since 4.5.0
@@ -90,6 +102,15 @@ class WP_Customize_Partial {
 	public $render_callback;
 
 	/**
+	 * Whether the container element is included in the partial, or if only the contents are rendered.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 * @var bool
+	 */
+	public $container_inclusive = false;
+
+	/**
 	 * Whether to refresh the entire preview in case a partial cannot be refreshed.
 	 *
 	 * A partial render is considered a failure if the render_callback returns false.
@@ -127,6 +148,9 @@ class WP_Customize_Partial {
 
 		$this->manager = $manager;
 		$this->id = $id;
+		$this->id_data['keys'] = preg_split( '/\[/', str_replace( ']', '', $this->id ) );
+		$this->id_data['base'] = array_shift( $this->id_data['keys'] );
+
 		if ( empty( $this->render_callback ) ) {
 			$this->render_callback = array( $this, 'render_callback' );
 		}
@@ -140,6 +164,23 @@ class WP_Customize_Partial {
 		if ( empty( $this->primary_setting ) ) {
 			$this->primary_setting = current( $this->settings );
 		}
+	}
+
+	/**
+	 * Get parsed ID data for multidimensional setting.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @return array {
+	 *     ID data for multidimensional partial.
+	 *
+	 *     @type string $base ID base.
+	 *     @type array  $keys Keys for multidimensional array.
+	 * }
+	 */
+	final public function id_data() {
+		return $this->id_data;
 	}
 
 	/**
@@ -232,6 +273,7 @@ class WP_Customize_Partial {
 		$exports['selector'] = $this->selector;
 		$exports['type'] = $this->type;
 		$exports['fallbackRefresh'] = $this->fallback_refresh;
+		$exports['containerInclusive'] = $this->container_inclusive;
 		return $exports;
 	}
 }

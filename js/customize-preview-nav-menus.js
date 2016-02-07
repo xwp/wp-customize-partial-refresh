@@ -4,6 +4,19 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	var self = {};
 
 	/**
+	 * Initialize nav menus preview.
+	 */
+	self.init = function() {
+		var self = this;
+		self.addPartials();
+		self.watchNavMenuLocationChanges();
+
+		api.preview.bind( 'active', function() {
+			self.highlightControls();
+		} );
+	};
+
+	/**
 	 * Partial representing an invocation of wp_nav_menu().
 	 *
 	 * @class
@@ -16,8 +29,8 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * Constructor.
 		 *
 		 * @since 4.5.0
-		 * @param {string} id      - Partial ID.
-		 * @param {Object} options -
+		 * @param {string} id - Partial ID.
+		 * @param {Object} options
 		 * @param {Object} options.params
 		 * @param {jQuery} options.params.containerElement
 		 * @param {Object} options.params.navMenuArgs
@@ -32,13 +45,13 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			}
 
 			options = options || {};
-			options.params = options.params || {};
 			options.params = _.extend(
 				{
 					containerElement: null,
-					navMenuArgs: {}
+					navMenuArgs: {},
+					containerInclusive: true
 				},
-				options.params
+				options.params || {}
 			);
 			api.Partial.prototype.initialize.call( partial, id, options );
 
@@ -98,21 +111,22 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		},
 
 		/**
-		 * Prepare containers for selective refresh.
+		 * Render content.
 		 *
 		 * @inheritdoc
 		 * @param {object} container
 		 */
 		renderContent: function( container ) {
-			var partial = this;
-			if ( api.Partial.prototype.renderContent.apply( partial, arguments ) ) {
+			var partial = this, previousContainer = container.element;
+			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
+				partial.params.containerElement = container.element;
 
 				// Trigger deprecated event.
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
 					instanceNumber: null, // @deprecated
 					wpNavArgs: container.context, // @deprecated
 					wpNavMenuArgs: container.context,
-					oldContainer: container.element,
+					oldContainer: previousContainer,
 					newContainer: container.element
 				} ] );
 			}
@@ -156,7 +170,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 *
 	 * @since 4.5.0
 	 */
-	self.addPartialsForContainers = function() {
+	self.addPartials = function() {
 		var containerElements = $( '[data-customize-nav-menu-args]' );
 		containerElements.each( function() {
 			var partial, containerElement = $( this );
@@ -198,18 +212,13 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			} );
 
 			if ( ! themeLocationPartialFound ) {
-				api.selectiveRefresh.requestFullRefresh();
+				api.selectiveRefreshPreview.requestFullRefresh();
 			}
 		} );
 	};
 
 	api.bind( 'preview-ready', function() {
-		self.addPartialsForContainers();
-		self.watchNavMenuLocationChanges();
-
-		api.preview.bind( 'active', function() {
-			self.highlightControls();
-		} );
+		self.init();
 	} );
 
 	return self;

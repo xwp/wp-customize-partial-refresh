@@ -1,5 +1,5 @@
 /* global jQuery, JSON, _customizePartialRefreshExports */
-wp.customize.partialRefresh = ( function( $, api ) {
+wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	'use strict';
 
 	var self = {
@@ -58,6 +58,7 @@ wp.customize.partialRefresh = ( function( $, api ) {
 					selector: '',
 					settings: [],
 					primarySetting: null,
+					containerInclusive: false,
 					fallbackRefresh: true // Note this needs to be false in a frontend editing context.
 				},
 				options.params || {}
@@ -232,7 +233,7 @@ wp.customize.partialRefresh = ( function( $, api ) {
 		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
 		renderContent: function( container ) {
-			var partial = this, content;
+			var partial = this, content, previousContainer;
 			if ( ! container.element ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return false;
@@ -248,8 +249,15 @@ wp.customize.partialRefresh = ( function( $, api ) {
 				content = wp.emoji.parse( content );
 			}
 
-			// @todo Detect if content also includes the container wrapper, and if so, only inject the content children? Or WP_Customize_Partial::$container_inclusive could make this explicit.
-			container.element.html( content );
+			previousContainer = container.element;
+
+			if ( partial.params.containerInclusive ) {
+				container.element = $( content );
+				previousContainer.replaceWith( container.element );
+				container.element.attr( 'title', self.data.l10n.shiftClickToEdit );
+			} else {
+				container.element.html( content );
+			}
 
 			container.element.removeClass( 'customize-partial-refreshing' );
 
@@ -264,7 +272,7 @@ wp.customize.partialRefresh = ( function( $, api ) {
 			 * The post-load event below is re-using what Jetpack introduces, with the introduction of the target property.
 			 * It is not ideal because it is not just posts that are selectively refreshed, but any element.
 			 */
-			$( document.body ).trigger( 'post-load', { html: content, target: container.element } );
+			$( document.body ).trigger( 'post-load', { html: content, target: container.element, previousTarget: previousContainer } );
 			return true;
 		},
 

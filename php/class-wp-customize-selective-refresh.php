@@ -107,6 +107,12 @@ class WP_Customize_Selective_Refresh {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
+		$handle = 'customize-widgets-hacks';
+		$src = $this->dir_url . 'js/customize-widgets-hacks.js';
+		$deps = array( 'customize-widgets' );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+
 		$handle = 'customize-partial-refresh-preview';
 		$src = $this->dir_url . 'js/customize-partial-refresh-preview.js';
 		$deps = array( 'customize-preview' );
@@ -336,13 +342,28 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
+	 * Check whether the request is for rendering partials.
+	 *
+	 * Note that this will not consider whether the request is authorized or valid,
+	 * just that essentially the route is a match.
+	 *
+	 * @since 4.5.0
+	 * @access public
+	 *
+	 * @return bool Whether the request is for rendering partials.
+	 */
+	public function is_render_partials_request() {
+		return ! empty( $_POST[ static::RENDER_QUERY_VAR ] );
+	}
+
+	/**
 	 * Handle Ajax request to return the settings partial value.
 	 *
 	 * @since 4.5.0
 	 * @access public
 	 */
 	public function handle_render_partials_request() {
-		if ( empty( $_POST[ static::RENDER_QUERY_VAR ] ) ) {
+		if ( ! $this->is_render_partials_request() ) {
 			return;
 		}
 
