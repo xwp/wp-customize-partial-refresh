@@ -144,7 +144,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 * @since 4.5.0
 	 */
 	self.highlightControls = function() {
-		var selector = '.menu-item[id^=menu-item-]';
+		var selector = '.menu-item';
 
 		// Focus on the menu item control when shift+clicking the menu item.
 		$( document ).on( 'click', selector, function( e ) {
@@ -153,7 +153,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				return;
 			}
 
-			navMenuItemParts = $( this ).attr( 'id' ).match( /^menu-item-(\d+)$/ );
+			navMenuItemParts = $( this ).attr( 'class' ).match( /(?:^|\s)menu-item-(\d+)(?:\s|$)/ );
 			if ( navMenuItemParts ) {
 				e.preventDefault();
 				e.stopPropagation(); // Make sure a sub-nav menu item will get focused instead of parent items.
