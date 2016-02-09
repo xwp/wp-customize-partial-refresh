@@ -158,39 +158,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 	}
 
 	/**
-	 * Sort params to safely hash the serialized value.
-	 *
-	 * @since 4.5.0
-	 * @access protected
-	 *
-	 * @param array $params Params.
-	 * @return array Sorted params.
-	 */
-	protected function sort_sidebar_params( $params ) {
-		foreach ( $params as $i => &$args ) {
-			ksort( $args );
-		}
-		return $params;
-	}
-
-	/**
-	 * Hash (hmac) the arguments with the nonce and secret auth key to ensure they
-	 * are not tampered with when submitted in the Ajax request.
-	 *
-	 * @since 4.5.0
-	 * @access public
-	 *
-	 * @param array $params The sidebar params to hash. Note that this multidimensional array is positional at the root.
-	 * @return string
-	 */
-	public function hash_sidebar_params( $params ) {
-		foreach ( $params as $i => &$args ) {
-			ksort( $args );
-		}
-		return wp_hash( serialize( $params ) );
-	}
-
-	/**
 	 * Keep track of the number of times that dynamic_sidebar() was called for a given sidebar index.
 	 *
 	 * This helps facilitate the uncommon scenario where a single sidebar is rendered multiple times on a template.
