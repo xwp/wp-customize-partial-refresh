@@ -233,7 +233,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
 		renderContent: function( container ) {
-			var partial = this, content, previousContainer;
+			var partial = this, context, content, newContainer, oldContainer;
 			if ( ! container.element ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return false;
@@ -249,11 +249,23 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				content = wp.emoji.parse( content );
 			}
 
-			previousContainer = container.element;
+			oldContainer = container.element;
 
 			if ( partial.params.containerInclusive ) {
-				container.element = $( content );
-				previousContainer.replaceWith( container.element );
+				newContainer = $( content );
+
+				// Merge the new context on top of the old context.
+				context = _.extend(
+					{},
+					oldContainer.data( 'customize-container-context' ) || {},
+					newContainer.data( 'customize-container-context' ) || {}
+				);
+				if ( ! _.isEmpty( context ) ) {
+					newContainer.data( 'customize-container-context', context );
+				}
+
+				container.element = newContainer;
+				oldContainer.replaceWith( newContainer );
 				container.element.attr( 'title', self.data.l10n.shiftClickToEdit );
 			} else {
 				container.element.html( content );
@@ -272,7 +284,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			 * The post-load event below is re-using what Jetpack introduces, with the introduction of the target property.
 			 * It is not ideal because it is not just posts that are selectively refreshed, but any element.
 			 */
-			$( document.body ).trigger( 'post-load', { html: content, target: container.element, previousTarget: previousContainer } );
+			$( document.body ).trigger( 'post-load', { html: content, target: container.element, previousTarget: oldContainer } );
 			return true;
 		},
 

@@ -137,13 +137,13 @@ class WP_Customize_Widgets_Partial_Refresh {
 
 		$context = array(
 			'sidebar_id' => $params[0]['id'],
-			'sidebar_instance_number' => null,
 		);
-		if ( isset( $this->sidebar_instance_count[ $params[0]['id'] ] ) ) {
+		if ( isset( $this->context_sidebar_instance_number ) ) {
+			$context['sidebar_instance_number'] = $this->context_sidebar_instance_number;
+		} else if ( isset( $this->sidebar_instance_count[ $params[0]['id'] ] ) ) {
 			$context['sidebar_instance_number'] = $this->sidebar_instance_count[ $params[0]['id'] ];
 		}
 
-		// @todo We don't even need to export the root element because we're not including it in the output anyway.
 		$params[0]['before_widget'] = preg_replace(
 			'#^(<\w+)#',
 			sprintf(
@@ -202,6 +202,13 @@ class WP_Customize_Widgets_Partial_Refresh {
 	protected $sidebar_instance_count = array();
 
 	/**
+	 * The current request's sidebar_instance_number context.
+	 *
+	 * @var int
+	 */
+	protected $context_sidebar_instance_number;
+
+	/**
 	 * Insert marker before widgets are rendered in a dynamic sidebar.
 	 *
 	 * @since 4.5.0
@@ -255,6 +262,11 @@ class WP_Customize_Widgets_Partial_Refresh {
 			return false;
 		}
 
+		if ( isset( $context['sidebar_instance_number'] ) ) {
+			$this->context_sidebar_instance_number = $context['sidebar_instance_number'];
+		}
+
+		// @todo No closure
 		$filter = function( $sidebars_widgets ) use ( $context, $widget_id ) {
 			$sidebars_widgets[ $context['sidebar_id'] ] = array( $widget_id );
 			return $sidebars_widgets;
@@ -268,6 +280,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 		$container = ob_get_clean();
 
 		remove_filter( 'sidebars_widgets', $filter, 1000 );
+
+		$this->context_sidebar_instance_number = null;
 
 		return $container;
 	}

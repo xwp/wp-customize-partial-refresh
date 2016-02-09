@@ -17,6 +17,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 	/**
 	 * Init widgets preview.
+	 *
+	 * @since 4.5.0
 	 */
 	self.init = function() {
 		var self = this;
@@ -131,6 +133,20 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				api( settingId, function( setting ) {
 					setting.bind( _.bind( partial.handleSettingChange, partial ) );
 				} );
+			} );
+
+			api.bind( 'change', function( setting ) {
+				var widgetId, parsedId = self.parseWidgetSettingId( setting.id );
+				if ( ! parsedId ) {
+					return;
+				}
+				widgetId = parsedId.idBase;
+				if ( parsedId.number ) {
+					widgetId += '-' + String( parsedId.number );
+				}
+
+				// @todo This is an expensive operation.
+				partial.ensureWidgetInstanceContainers( widgetId );
 			} );
 		},
 
@@ -256,6 +272,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		/**
 		 * Handle change to the sidebars_widgets[] setting.
 		 *
+		 * @since 4.5.0
+		 *
 		 * @param {Array} newWidgetIds New widget ids.
 		 * @param {Array} oldWidgetIds Old widget ids.
 		 */
@@ -319,6 +337,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 		/**
 		 * Note that the meat is handled in handleSettingChange because it has the context of which widgets were removed.
+		 *
+		 * @since 4.5.0
 		 */
 		refresh: function() {
 			var partial = this, deferred = $.Deferred();
@@ -341,6 +361,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 	/**
 	 * Add partials for the registered widget areas (sidebars).
+	 *
+	 * @since 4.5.0
 	 */
 	self.addPartials = function() {
 		_.each( self.registeredSidebars, function( registeredSidebar ) {
@@ -366,6 +388,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 	/**
 	 * Calculate the selector for the sidebar's widgets based on the registered sidebar's info.
+	 *
+	 * @since 3.9.0
 	 */
 	self.buildWidgetSelectors = function() {
 		var self = this;
@@ -402,6 +426,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	/**
 	 * Highlight the widget on widget updates or widget control mouse overs.
 	 *
+	 * @since 3.9.0
 	 * @param  {string} widgetId ID of the widget.
 	 */
 	self.highlightWidget = function( widgetId ) {
@@ -419,6 +444,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	/**
 	 * Show a title and highlight widgets on hover. On shift+clicking
 	 * focus the widget control.
+	 *
+	 * @since 3.9.0
 	 */
 	self.highlightControls = function() {
 		var self = this,
@@ -444,6 +471,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	/**
 	 * Parse a widget ID.
 	 *
+	 * @since 4.5.0
+	 *
 	 * @param {string} widgetId Widget ID.
 	 * @returns {{idBase: string, number: number|null}}
 	 */
@@ -465,7 +494,34 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	};
 
 	/**
+	 * Parse a widget setting ID.
+	 *
+	 * @since 4.5.0
+	 *
+	 * @param {string} settingId Widget setting ID.
+	 * @returns {{idBase: string, number: number|null}|null}
+	 */
+	self.parseWidgetSettingId = function( settingId ) {
+		var matches, parsed = {
+			idBase: '',
+			number: null
+		};
+
+		matches = settingId.match( /^widget_([^\[]+?)(?:\[(\d+)])?$/ );
+		if ( ! matches ) {
+			return null;
+		}
+		parsed.idBase = matches[1];
+		if ( matches[2] ) {
+			parsed.number = parseInt( matches[2], 10 );
+		}
+		return parsed;
+	};
+
+	/**
 	 * Convert a widget ID into a Customizer setting ID.
+	 *
+	 * @since 4.5.0
 	 *
 	 * @param {string} widgetId Widget ID.
 	 * @returns {string} settingId Setting ID.
