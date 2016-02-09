@@ -164,7 +164,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 			$nav_menu_content = preg_replace(
 				'#^(<\w+)#',
 				sprintf(
-					'$1 data-customize-nav-menu-args="%s"',
+					'$1 data-customize-nav-menu-placement="1" data-customize-container-context="%s"',
 					esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) )
 				),
 				$nav_menu_content,

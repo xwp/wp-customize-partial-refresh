@@ -252,6 +252,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			oldContainer = container.element;
 
 			if ( partial.params.containerInclusive ) {
+				// Note that content may be an empty string, and in this case jQuery will just remove the oldContainer
 				newContainer = $( content );
 
 				// Merge the new context on top of the old context.

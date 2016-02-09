@@ -65,7 +65,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			options = options || {};
 			options.params = _.extend(
 				{
-					selector: '#' + partial.widgetId,
+					/* Note that a selector of ('#' + partial.widgetId) is faster, but jQuery will only return the one result. */
+					selector: '[id="' + partial.widgetId + '"]', // Alternatively, '[data-customize-widget-id="' + partial.widgetId + '"]'
 					settings: [ self.getWidgetInstanceSettingId( partial.widgetId ) ],
 					containerInclusive: true
 				},
@@ -251,6 +252,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 						sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
 						sidebarPartial.params.sidebarArgs.after_widget
 					);
+					widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
 					widgetAreaContainer.afterNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaContainer.afterNode );
 				}
 
