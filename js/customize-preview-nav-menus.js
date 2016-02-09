@@ -178,7 +178,9 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	self.addPartials = function( rootElement ) {
 		var containerElements;
 		rootElement = $( rootElement || document.body );
-		containerElements = rootElement.parent().find( '[data-customize-nav-menu-placement][data-customize-partial-id]' );
+
+		// @todo Genericize.
+		containerElements = rootElement.parent().find( '[data-customize-partial-type="nav_menu_placement"][data-customize-partial-id]' );
 		containerElements.each( function() {
 			var containerElement = $( this ), partial, id, navMenuArgs;
 			id = containerElement.data( 'customize-partial-id' );

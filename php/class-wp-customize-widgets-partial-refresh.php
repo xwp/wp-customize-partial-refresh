@@ -144,15 +144,12 @@ class WP_Customize_Widgets_Partial_Refresh {
 			$context['sidebar_instance_number'] = $this->sidebar_instance_count[ $params[0]['id'] ];
 		}
 
-		$params[0]['before_widget'] = preg_replace(
-			'#^(<\w+)#',
-			sprintf(
-				'$1 data-customize-widget-id="%s" data-customize-container-context="%s"',
-				esc_attr( $params[0]['widget_id'] ), // In case the widget decides to remove the ID attribute.
-				esc_attr( wp_json_encode( $context ) )
-			),
-			$params[0]['before_widget']
-		);
+		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget_instance[' . $params[0]['widget_id'] . ']' ) );
+		$attributes .= ' data-customize-partial-options="{}"';
+		$attributes .= ' data-customize-partial-type="widget_instance"';
+		$attributes .= sprintf( ' data-customize-container-context="%s"', esc_attr( wp_json_encode( $context ) ) );
+		$attributes .= sprintf( ' data-customize-widget-id="%s"', esc_attr( $params[0]['widget_id'] ) );
+		$params[0]['before_widget'] = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $params[0]['before_widget'] );
 
 		return $params;
 	}
@@ -171,6 +168,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 	/**
 	 * The current request's sidebar_instance_number context.
 	 *
+	 * @since 4.5.0
+	 * @access private
 	 * @var int
 	 */
 	protected $context_sidebar_instance_number;

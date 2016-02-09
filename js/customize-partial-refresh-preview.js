@@ -55,7 +55,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 
 			partial.params = _.extend(
 				{
-					selector: '',
+					selector: '[data-customize-partial-id="' + id + '"]',
 					settings: [],
 					primarySetting: null,
 					containerInclusive: false,
