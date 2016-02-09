@@ -294,10 +294,10 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			// Handle removal of widgets.
 			widgetsRemoved = _.difference( oldWidgetIds, newWidgetIds );
 			_.each( widgetsRemoved, function( removedWidgetId ) {
-				var partial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
-				if ( partial ) {
-					_.each( partial.containers(), function( container ) {
-						if ( container.context.sidebar_id === partial.sidebarId ) {
+				var widgetPartial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
+				if ( widgetPartial ) {
+					_.each( widgetPartial.containers(), function( container ) {
+						if ( container.context.sidebar_id === sidebarPartial.sidebarId ) {
 							container.element.remove();
 						}
 					} );
