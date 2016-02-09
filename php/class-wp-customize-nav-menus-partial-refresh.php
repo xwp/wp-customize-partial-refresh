@@ -68,7 +68,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 	public function customize_dynamic_partial_args( $partial_args, $partial_id ) {
 
-		if ( preg_match( '/^nav_menu_placement\[\d+\]$/', $partial_id ) ) {
+		if ( preg_match( '/^nav_menu_placement\[[0-9a-f]{32}\]$/', $partial_id ) ) {
 			if ( false === $partial_args ) {
 				$partial_args = array();
 			}
@@ -164,7 +164,8 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 			$nav_menu_content = preg_replace(
 				'#^(<\w+)#',
 				sprintf(
-					'$1 data-customize-nav-menu-placement="1" data-customize-container-context="%s"',
+					'$1 data-customize-partial-id="%s" data-customize-nav-menu-placement="1" data-customize-container-context="%s"',
+					esc_attr( 'nav_menu_placement[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ),
 					esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) )
 				),
 				$nav_menu_content,
