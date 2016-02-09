@@ -252,10 +252,12 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			oldContainer = container.element;
 
 			if ( partial.params.containerInclusive ) {
+
 				// Note that content may be an empty string, and in this case jQuery will just remove the oldContainer
 				newContainer = $( content );
 
 				// Merge the new context on top of the old context.
+				// @todo merge more than just the context; copy/merge all data?
 				context = _.extend(
 					{},
 					oldContainer.data( 'customize-container-context' ) || {},
@@ -284,6 +286,8 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			 *
 			 * The post-load event below is re-using what Jetpack introduces, with the introduction of the target property.
 			 * It is not ideal because it is not just posts that are selectively refreshed, but any element.
+			 *
+			 * @todo Utilize MutationObservers as the general solution for this.
 			 */
 			$( document.body ).trigger( 'post-load', { html: content, target: container.element, previousTarget: oldContainer } );
 			return true;
@@ -499,6 +503,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	};
 
 	api.bind( 'preview-ready', function() {
+		var triggerRefreshForSetting;
 
 		_.extend( self.data, _customizePartialRefreshExports );
 
@@ -515,13 +520,15 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		} );
 
 		// Trigger update for each partial that is associated with a changed setting.
-		api.bind( 'change', function( setting ) {
+		triggerRefreshForSetting = function( setting ) {
 			api.partial.each( function( partial ) {
 				if ( partial.isRelatedSetting( setting ) ) {
 					partial.refresh();
 				}
 			} );
-		} );
+		};
+		api.bind( 'add', triggerRefreshForSetting );
+		api.bind( 'change', triggerRefreshForSetting );
 
 		api.preview.bind( 'active', function() {
 

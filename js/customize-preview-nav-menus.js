@@ -16,6 +16,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			self.highlightControls();
 		} );
 
+		// @todo Move this up.
 		self.mutationObserver = new MutationObserver( function( mutations ) {
 			_.each( mutations, function( mutation ) {
 				self.addPartials( mutation.target );
@@ -169,6 +170,8 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 * seen will be skipped.
 	 *
 	 * @since 4.5.0
+	 *
+	 * @todo Move this into root functionality, making it generic.
 	 *
 	 * @param {jQuery} [rootElement]
 	 */
