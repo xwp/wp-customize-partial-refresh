@@ -13,7 +13,14 @@
 	 */
 	api.bind( 'partial-content-rendered', function( args ) {
 		if ( _.isString( args.content ) ) {
-			$( document.body ).trigger( 'post-load', { html: args.content, target: args.newContainerElement } );
+			$( document.body ).trigger( 'post-load', { html: args.content } );
+		}
+	} );
+
+	// Add partials when new posts are added.
+	$( document.body ).on( 'post-load', function( e, response ) {
+		if ( response.html && -1 !== response.html.indexOf( 'data-customize-partial' ) ) {
+			api.selectiveRefreshPreview.addPartials();
 		}
 	} );
 

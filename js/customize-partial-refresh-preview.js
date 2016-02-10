@@ -55,7 +55,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 
 			partial.params = _.extend(
 				{
-					selector: '[data-customize-partial-id="' + id + '"]',
+					selector: '[data-customize-partial-id="' + id + '"]', // @todo Slow. Consider injecting customize-partial-id-${id} classnames.
 					settings: [],
 					primarySetting: null,
 					containerInclusive: false,
@@ -519,13 +519,19 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @param {jQuery} [rootElement]
+	 * @param {jQuery|HTMLElement} [rootElement]
 	 */
 	self.addPartials = function( rootElement ) {
 		var containerElements;
-		rootElement = rootElement || $( document.body );
+		if ( ! rootElement ) {
+			rootElement = document.body;
+		}
+		rootElement = $( rootElement );
 
-		containerElements = rootElement.parent().find( '[data-customize-partial-id]' );
+		containerElements = rootElement.find( '[data-customize-partial-id]' );
+		if ( rootElement.is( '[data-customize-partial-id]' ) ) {
+			containerElements = containerElements.add( rootElement );
+		}
 		containerElements.each( function() {
 			var containerElement = $( this ), partial, id, type, Constructor, options;
 			id = containerElement.data( 'customize-partial-id' );
@@ -617,16 +623,23 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			setting.bind( handleSettingChange );
 		} );
 
-		// Add (dynamic) partials that are declared via data attributes, and add new ones as the document changes.
+		// Add (dynamic) initial partials that are declared via data-* attributes.
 		self.addPartials();
-		self.mutationObserver = new MutationObserver( function( mutations ) {
-			_.each( mutations, function( mutation ) {
-				self.addPartials( $( mutation.target ).parent() );
+
+		// Add new dynamic partials when the document changes.
+		if ( 'undefined' !== typeof MutationObserver ) {
+			self.mutationObserver = new MutationObserver( function( mutations ) {
+				_.each( mutations, function( mutation ) {
+					self.addPartials( $( mutation.target ) );
+				} );
 			} );
-		} );
-		self.mutationObserver.observe( document.body, {
-			childList: true,
-			subtree: true
+			self.mutationObserver.observe( document.body, {
+				childList: true,
+				subtree: true
+			} );
+		}
+		api.bind( 'partial-content-rendered', function( args ) {
+			self.addPartials( args.newContainer );
 		} );
 
 		api.preview.bind( 'active', function() {

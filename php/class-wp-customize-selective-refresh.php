@@ -132,12 +132,6 @@ class WP_Customize_Selective_Refresh {
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
-
-		$handle = 'customize-partial-jetpack-infinite-scroll-integration';
-		$src = $this->dir_url . 'js/jetpack-infinite-scroll-integration.js';
-		$deps = array( 'customize-partial-refresh-preview' );
-		$in_footer = true;
-		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 	}
 
 	/**
@@ -266,8 +260,12 @@ class WP_Customize_Selective_Refresh {
 		 *
 		 * Hard-coded reference to a Jetpack module's event is not relevant for #coremerge.
 		 */
-		if ( current_theme_supports( 'infinite-scroll' ) ) {
-			wp_enqueue_script( 'customize-partial-jetpack-infinite-scroll-integration' );
+		if ( class_exists( 'Jetpack' ) && Jetpack::is_module_active( 'infinite-scroll' ) && current_theme_supports( 'infinite-scroll' ) ) {
+			$handle = 'customize-partial-jetpack-infinite-scroll-integration';
+			$src = $this->dir_url . 'js/jetpack-infinite-scroll-integration.js';
+			$deps = array( 'the-neverending-homepage', 'customize-partial-refresh-preview' );
+			$in_footer = true;
+			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 		}
 
 		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
