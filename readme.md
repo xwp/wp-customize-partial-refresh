@@ -5,12 +5,11 @@ Refresh parts of a Customizer preview instead of reloading the entire page when 
 
 **Contributors:** [xwp](https://profiles.wordpress.org/xwp), [westonruter](https://profiles.wordpress.org/westonruter)  
 **Tags:** [customizer](https://wordpress.org/plugins/tags/customizer), [customize](https://wordpress.org/plugins/tags/customize), [preview](https://wordpress.org/plugins/tags/preview)  
-**Requires at least:** 4.1  
-**Tested up to:** 4.3  
+**Requires at least:** 4.5-alpha-35776  
 **Stable tag:** trunk (master)  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
-[![Build Status](https://travis-ci.org/xwp/wp-customize-partial-refresh.png?branch=master)](https://travis-ci.org/xwp/wp-customize-partial-refresh) 
+[![Build Status](https://travis-ci.org/xwp/wp-customize-partial-refresh.svg?branch=master)](https://travis-ci.org/xwp/wp-customize-partial-refresh) 
 
 ## Description ##
 
