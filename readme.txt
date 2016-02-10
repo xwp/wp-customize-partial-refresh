@@ -6,11 +6,11 @@ Stable tag:        trunk
 License:           GPLv2 or later
 License URI:       http://www.gnu.org/licenses/gpl-2.0.html
 
-Refresh parts of a Customizer preview instead of reloading the entire page when a setting changed without transport=postMessage.
+Refresh parts of the Customizer preview instead of reloading the entire page.
 
 == Description ==
 
-**This is a feature plugin proposed for WordPress 4.4**
+**This is a feature plugin proposed for WordPress 4.5*
 
 The WordPress Customizer is a framework for previewing any change to a site.
 By default, settings exposed in the Customizer use a `refresh` transport,
@@ -40,11 +40,21 @@ the feature in favor of having a better generalized framework for partial refres
 in a future release. Partial preview refreshing has been added in 4.3 for changes
 to menus which can now be managed in the Customizer.
 
-This plugin first focuses on resurrecting partial preview refreshes for widgets.
-We can then explore adding partial refresh support to other object types, such
-as ~~menus,~~ inline styles, and especially to provide an API for developers to
-register arbitrary regions as being partial-refreshable, in part by associating
-a CSS selector with a given Customizer setting.
+This plugin introduces a “selective refresh” framework whereby template *partials*
+are registered. Partials are associated with settings, and when the setting changes
+the partial is refreshed via Ajax. A partial has an associated <code>render_callback</code>
+which is responsible for generating the content for the partial.
+
+The nav menus partial refreshing introduced to Core in 4.3 is re-implemented in this
+plugin to make use of the selective refresh framework. Selective refresh of widgets
+is also implemented using the same framework.
+
+Other examples of selective refresh:
+
+* [Site title smilies](https://gist.github.com/westonruter/a15b99bdd07e6f4aae7a)
+* [Welcome message](https://gist.github.com/westonruter/ed4ae3f8b6f6d653e0c6)
+
+[youtube https://youtu.be/ikW8dfaOPng]
 
 <em>Blue sky:</em> If we can eliminate full-page refreshes, we can start to
 introduce controls inline with the preview (e.g. widget controls appearing
@@ -54,23 +64,10 @@ frontend page the user is on without having enter into a completely different
 Customizer state; when done, they can just collapse the Customizer away and
 continue on their way browsing the site.
 
-= Usage =
-
-To opt-in to partial preview refreshes for a theme, add:
-
-<pre lang="php">add_theme_support( 'customize-partial-refresh-widgets' );</pre>
-
-When this is done, widgets in Core will automatically use partial refreshes.
-To opt-in to partial refreshes for other widget types, use this to opt-in for
-a specific widget:
-
-<pre lang="php">add_filter( "customize_widget_partial_refreshable_{$id_base}", '__return_true' );</pre>
-
-And use this to opt-in everything:
-
-<pre lang="php">add_filter( 'customize_widget_partial_refreshable', '__return_true' );</pre>
-
 == Changelog ==
+
+= 0.5.0 =
+Complete rewrite utilizing new selective/partial refresh framework. Selective refreshing of nav menus (in core) and widgets (in this plugin) were rewritten to make use of the new framework. Documentation forthcoming.
 
 = 0.4.3 =
 * Fix PHP 5.2 compatibility.
