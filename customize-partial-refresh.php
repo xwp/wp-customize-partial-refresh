@@ -47,10 +47,14 @@ function customize_partial_refresh_filter_customize_loaded_components( $componen
 	require_once dirname( __FILE__ ) . '/php/class-wp-customize-widgets-partial-refresh.php';
 
 	$wp_customize->selective_refresh = new WP_Customize_Selective_Refresh( $wp_customize );
-	$wp_customize->selective_refresh->nav_menus = new WP_Customize_Nav_Menus_Partial_Refresh( $wp_customize );
-	$wp_customize->selective_refresh->widgets = new WP_Customize_Widgets_Partial_Refresh( $wp_customize );
+	if ( in_array( 'widgets', $components, true ) ) {
+		$wp_customize->selective_refresh->widgets = new WP_Customize_Widgets_Partial_Refresh( $wp_customize );
+	}
+	if ( in_array( 'nav_menus', $components, true ) ) {
+		$wp_customize->selective_refresh->nav_menus = new WP_Customize_Nav_Menus_Partial_Refresh( $wp_customize );
+	}
 
 	return $components;
 }
 
-add_filter( 'customize_loaded_components', 'customize_partial_refresh_filter_customize_loaded_components', 10, 2 );
+add_filter( 'customize_loaded_components', 'customize_partial_refresh_filter_customize_loaded_components', 100, 2 );
