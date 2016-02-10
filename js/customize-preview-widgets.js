@@ -141,15 +141,17 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * @since 4.5.0
 		 */
 		ready: function() {
-			var partial = this;
-			_.each( partial.settings(), function( settingId ) {
+			var sidebarPartial = this;
+			_.each( sidebarPartial.settings(), function( settingId ) {
 				api( settingId, function( setting ) {
-					setting.bind( _.bind( partial.handleSettingChange, partial ) );
+					setting.bind( _.bind( sidebarPartial.handleSettingChange, sidebarPartial ) );
 				} );
 			} );
 
-			api.bind( 'change', function( setting ) {
-				var widgetId, parsedId = self.parseWidgetSettingId( setting.id );
+			// Make sure that a widget_instance partial has a container in the DOM prior to a refresh.
+			api.bind( 'change', function( widgetSetting ) {
+				var widgetId, parsedId;
+				parsedId = self.parseWidgetSettingId( widgetSetting.id );
 				if ( ! parsedId ) {
 					return;
 				}
@@ -158,8 +160,16 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					widgetId += '-' + String( parsedId.number );
 				}
 
-				// @todo This is an expensive operation. Optimize.
-				partial.ensureWidgetInstanceContainers( widgetId );
+				_.each( sidebarPartial.settings(), function( settingId ) {
+					var sidebarSetting = api( settingId ), sidebarWidgetIds;
+					if ( ! sidebarSetting ) {
+						return;
+					}
+					sidebarWidgetIds = sidebarSetting();
+					if ( _.isArray( sidebarWidgetIds ) && -1 !== _.indexOf( sidebarWidgetIds, widgetId ) ) {
+						sidebarPartial.ensureWidgetInstanceContainers( widgetId );
+					}
+				} );
 			} );
 		},
 
@@ -227,6 +237,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * Make sure there is a widget instance container in this sidebar for the given widget ID.
 		 *
 		 * @since 4.5.0
+		 *
+		 * @todo This is an expensive operation. Optimize.
 		 *
 		 * @param {string} widgetId
 		 * @returns {wp.customize.Partial} Widget instance partial.
