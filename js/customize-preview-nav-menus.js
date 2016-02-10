@@ -81,10 +81,12 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * Return whether the setting is related to this partial.
 		 *
 		 * @since 4.5.0
-		 * @param {wp.customize.Value|string} setting - Object or ID.
+		 * @param {wp.customize.Value|string} setting  - Object or ID.
+		 * @param {number|object|false|null}  newValue - New value, or null if the setting was just removed.
+		 * @param {number|object|false|null}  oldValue - Old value, or null if the setting was just added.
 		 * @returns {boolean}
 		 */
-		isRelatedSetting: function( setting ) {
+		isRelatedSetting: function( setting, newValue, oldValue ) {
 			var partial = this, navMenuLocationSetting, navMenuId;
 			if ( _.isString( setting ) ) {
 				setting = api( setting );
@@ -107,7 +109,9 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			}
 			return (
 				( 'nav_menu[' + navMenuId + ']' === setting.id ) ||
-				( /^nav_menu_item\[/.test( setting.id ) && setting().nav_menu_term_id === navMenuId )
+				( /^nav_menu_item\[/.test( setting.id ) &&
+					( ( newValue && newValue.nav_menu_term_id === navMenuId ) || ( oldValue && oldValue.nav_menu_term_id === navMenuId ) )
+				)
 			);
 		},
 
@@ -123,6 +127,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				partial.params.containerElement = container.element;
 
 				// Trigger deprecated event.
+				// @todo Listen for mutation changes?
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
 					instanceNumber: null, // @deprecated
 					wpNavArgs: container.context, // @deprecated

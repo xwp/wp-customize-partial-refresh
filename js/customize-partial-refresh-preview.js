@@ -139,7 +139,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 * @param {wp.customize.Value|string} setting  ID or object for setting.
 		 * @return {boolean} Whether the setting is related to the partial.
 		 */
-		isRelatedSetting: function( setting ) {
+		isRelatedSetting: function( setting /*... newValue, oldValue */ ) {
 			var partial = this;
 			if ( _.isString( setting ) ) {
 				setting = api( setting );
@@ -503,7 +503,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	};
 
 	api.bind( 'preview-ready', function() {
-		var triggerRefreshForSetting;
+		var handleSettingChange, watchSettingChange, unwatchSettingChange;
 
 		_.extend( self.data, _customizePartialRefreshExports );
 
@@ -519,16 +519,59 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			}
 		} );
 
-		// Trigger update for each partial that is associated with a changed setting.
-		triggerRefreshForSetting = function( setting ) {
+		/**
+		 * Handle change to a setting.
+		 *
+		 * Note this is largely needed because adding a 'change' event handler to wp.customize
+		 * will only include the changed setting object as an argument, not including the
+		 * new value or the old value.
+		 *
+		 * @since 4.5.0
+		 * @this {wp.customize.Setting}
+		 *
+		 * @param {*|null} newValue New value, or null if the setting was just removed.
+		 * @param {*|null} oldValue Old value, or null if the setting was just added.
+		 */
+		handleSettingChange = function( newValue, oldValue ) {
+			var setting = this;
 			api.partial.each( function( partial ) {
-				if ( partial.isRelatedSetting( setting ) ) {
+				if ( partial.isRelatedSetting( setting, newValue, oldValue ) ) {
 					partial.refresh();
 				}
 			} );
 		};
-		api.bind( 'add', triggerRefreshForSetting );
-		api.bind( 'change', triggerRefreshForSetting );
+
+		/**
+		 * Trigger the initial change for the added setting, and watch for changes.
+		 *
+		 * @since 4.5.0
+		 * @this {wp.customize.Values}
+		 *
+		 * @param {wp.customize.Setting} setting
+		 */
+		watchSettingChange = function( setting ) {
+			handleSettingChange.call( setting, setting(), null );
+			setting.bind( handleSettingChange );
+		};
+
+		/**
+		 * Trigger the final change for the removed setting, and unwatch for changes.
+		 *
+		 * @since 4.5.0
+		 * @this {wp.customize.Values}
+		 *
+		 * @param {wp.customize.Setting} setting
+		 */
+		unwatchSettingChange = function( setting ) {
+			handleSettingChange.call( setting, null, setting() );
+			setting.unbind( handleSettingChange );
+		};
+
+		api.bind( 'add', watchSettingChange );
+		api.bind( 'remove', unwatchSettingChange );
+		api.each( function( setting ) {
+			setting.bind( handleSettingChange );
+		} );
 
 		api.preview.bind( 'active', function() {
 
