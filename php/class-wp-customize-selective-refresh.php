@@ -132,6 +132,12 @@ class WP_Customize_Selective_Refresh {
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
+
+		$handle = 'customize-partial-jetpack-infinite-scroll-integration';
+		$src = $this->dir_url . 'js/jetpack-infinite-scroll-integration.js';
+		$deps = array( 'customize-partial-refresh-preview' );
+		$in_footer = true;
+		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 	}
 
 	/**
@@ -252,6 +258,17 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function enqueue_preview_scripts() {
 		wp_enqueue_script( 'customize-partial-refresh-preview' );
+
+		/*
+		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
+		 * The Jetpack Infinite Scroll handles this when a post-load event is triggered.
+		 * Ideally this should be incorporated into Core.
+		 *
+		 * Hard-coded reference to a Jetpack module's event is not relevant for #coremerge.
+		 */
+		if ( current_theme_supports( 'infinite-scroll' ) ) {
+			wp_enqueue_script( 'customize-partial-jetpack-infinite-scroll-integration' );
+		}
 
 		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
 	}

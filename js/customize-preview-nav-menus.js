@@ -32,7 +32,6 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * @param {string} id - Partial ID.
 		 * @param {Object} options
 		 * @param {Object} options.params
-		 * @param {jQuery} options.params.containerElement
 		 * @param {Object} options.params.navMenuArgs
 		 * @param {string} options.params.navMenuArgs.args_hmac
 		 * @param {string} [options.params.navMenuArgs.theme_location]
@@ -113,10 +112,8 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		renderContent: function( container ) {
 			var partial = this, previousContainer = container.element;
 			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
-				partial.params.containerElement = container.element;
 
 				// Trigger deprecated event.
-				// @todo Listen for mutation changes?
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
 					instanceNumber: null, // @deprecated
 					wpNavArgs: container.context, // @deprecated

@@ -232,14 +232,14 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 * @todo Change args to be positional for closer parity with render filters? $rendered, $partial, $container_context
 		 * @since 4.5.0
 		 *
-		 * @param {object}         container
-		 * @param {jQuery}         [container.element] - This param will be empty if there was no element matching the selector.
-		 * @param {string|boolean} container.content   - Rendered HTML content, or false if no render.
-		 * @param {object}         [container.context] - Optional context information about the container.
+		 * @param {object}                container
+		 * @param {jQuery}                [container.element] - This param will be empty if there was no element matching the selector.
+		 * @param {string|object|boolean} container.content   - Rendered HTML content, a data object for JS templates to render, or false if no render.
+		 * @param {object}                [container.context] - Optional context information about the container.
 		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
 		renderContent: function( container ) {
-			var partial = this, context, content, newContainer, oldContainer;
+			var partial = this, context, content, newContainerElement, oldContainerElement;
 			if ( ! container.element ) {
 				partial.fallback( new Error( 'no_element' ), [ container ] );
 				return false;
@@ -248,35 +248,39 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				partial.fallback( new Error( 'missing_render' ), [ container ] );
 				return false;
 			}
-			content = container.content;
 
-			// @todo See multi-line comment below for how this logic should be tied to a new standard event that fires when
-			if ( wp && wp.emoji && wp.emoji.parse ) {
+			// Currently a subclass needs to override renderContent to handle partials returning data object.
+			if ( ! _.isString( container.content ) ) {
+				partial.fallback( new Error( 'non_string_content' ), [ container ] );
+				return false;
+			}
+
+			content = container.content;
+			if ( wp.emoji && wp.emoji.parse ) {
 				content = wp.emoji.parse( content );
 			}
 
-			oldContainer = container.element;
-
+			oldContainerElement = container.element;
 			if ( partial.params.containerInclusive ) {
 
 				// Note that content may be an empty string, and in this case jQuery will just remove the oldContainer
-				newContainer = $( content );
+				newContainerElement = $( content );
 
 				// Merge the new context on top of the old context.
-				// @todo merge more than just the context; copy/merge all data?
 				context = _.extend(
 					{},
-					oldContainer.data( 'customize-partial-container-context' ) || {},
-					newContainer.data( 'customize-partial-container-context' ) || {}
+					oldContainerElement.data( 'customize-partial-container-context' ) || {},
+					newContainerElement.data( 'customize-partial-container-context' ) || {}
 				);
 				if ( ! _.isEmpty( context ) ) {
-					newContainer.data( 'customize-partial-container-context', context );
+					newContainerElement.data( 'customize-partial-container-context', context );
 				}
 
-				container.element = newContainer;
-				oldContainer.replaceWith( newContainer );
+				container.element = newContainerElement;
+				oldContainerElement.replaceWith( newContainerElement );
 				container.element.attr( 'title', self.data.l10n.shiftClickToEdit );
 			} else {
+				newContainerElement = container.element;
 				container.element.html( content );
 			}
 
@@ -285,17 +289,16 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			/*
 			 * Trigger an event so that dynamic elements can be re-built.
 			 *
-			 * @todo This should be standardized for use in WordPress generally, to be used instead of the post-load event used in Jetpack's Infinite Scrolling or the o2 plugin.
-			 *
-			 * Core can add an event handler to automatically run wp-emoji.parse() on this event instead of copying the code above.
-			 * Core can add another event handler for initializing MediaElement.js elements. See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
-			 *
-			 * The post-load event below is re-using what Jetpack introduces, with the introduction of the target property.
-			 * It is not ideal because it is not just posts that are selectively refreshed, but any element.
-			 *
-			 * @todo Utilize MutationObservers as the general solution for this.
+			 * Ideally Core should add support for automatically initializing MediaElement.js elements on subtree modifications.
+			 * See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
 			 */
-			$( document.body ).trigger( 'post-load', { html: content, target: container.element, previousTarget: oldContainer } );
+			api.trigger( 'partial-content-rendered', {
+				partial: partial,
+				content: content,
+				context: container.context,
+				newContainer: newContainerElement,
+				oldContainer: oldContainerElement
+			} );
 			return true;
 		},
 
