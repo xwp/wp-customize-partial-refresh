@@ -8,23 +8,11 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 */
 	self.init = function() {
 		var self = this;
-		self.addPartials();
 
 		self.watchNavMenuLocationChanges();
 
 		api.preview.bind( 'active', function() {
 			self.highlightControls();
-		} );
-
-		// @todo Move this up.
-		self.mutationObserver = new MutationObserver( function( mutations ) {
-			_.each( mutations, function( mutation ) {
-				self.addPartials( mutation.target );
-			} );
-		} );
-		self.mutationObserver.observe( document.body, {
-			childList: true,
-			subtree: true
 		} );
 	};
 
@@ -49,6 +37,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * @param {string} options.params.navMenuArgs.args_hmac
 		 * @param {string} [options.params.navMenuArgs.theme_location]
 		 * @param {number} [options.params.navMenuArgs.menu]
+		 * @param {object} [options.constructingContainerContext]
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches, argsHmac;
@@ -62,7 +51,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			options.params = _.extend(
 				{
 					selector: '[data-customize-partial-id="' + id + '"]',
-					navMenuArgs: {},
+					navMenuArgs: options.constructingContainerContext || {},
 					containerInclusive: true
 				},
 				options.params || {}
@@ -166,44 +155,6 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				api.preview.send( 'focus-nav-menu-item-control', parseInt( navMenuItemParts[1], 10 ) );
 			}
 		});
-	};
-
-	/**
-	 * Add partials for any nav menu container elements in the document.
-	 *
-	 * This method may be called multiple times. Containers that already have been
-	 * seen will be skipped.
-	 *
-	 * @since 4.5.0
-	 *
-	 * @todo Move this into root functionality, making it generic.
-	 *
-	 * @param {jQuery} [rootElement]
-	 */
-	self.addPartials = function( rootElement ) {
-		var containerElements;
-		rootElement = $( rootElement || document.body );
-
-		// @todo Genericize.
-		containerElements = rootElement.parent().find( '[data-customize-partial-type="nav_menu_placement"][data-customize-partial-id]' );
-		containerElements.each( function() {
-			var containerElement = $( this ), partial, id, navMenuArgs;
-			id = containerElement.data( 'customize-partial-id' );
-			navMenuArgs = containerElement.data( 'customize-partial-container-context' );
-			if ( ! navMenuArgs || ! navMenuArgs.args_hmac ) {
-				throw new Error( 'Missing customize-partial-container-context that includes navMenuArgs and args_hmac' );
-			}
-
-			partial = api.partial( id );
-			if ( ! partial ) {
-				partial = new self.NavMenuPlacementPartial( id, {
-					params: {
-						navMenuArgs: navMenuArgs
-					}
-				} );
-				api.partial.add( partial.id, partial );
-			}
-		} );
 	};
 
 	/**

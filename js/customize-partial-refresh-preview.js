@@ -508,6 +508,41 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		return partialRequest.deferred.promise();
 	};
 
+	/**
+	 * Add partials for any nav menu container elements in the document.
+	 *
+	 * This method may be called multiple times. Containers that already have been
+	 * seen will be skipped.
+	 *
+	 * @since 4.5.0
+	 *
+	 * @param {jQuery} [rootElement]
+	 */
+	self.addPartials = function( rootElement ) {
+		var containerElements;
+		rootElement = rootElement || $( document.body );
+
+		containerElements = rootElement.parent().find( '[data-customize-partial-id]' );
+		containerElements.each( function() {
+			var containerElement = $( this ), partial, id, type, Constructor, options;
+			id = containerElement.data( 'customize-partial-id' );
+			if ( api.partial.has( id ) ) {
+				return;
+			}
+
+			type = containerElement.data( 'customize-partial-type' );
+			options = containerElement.data( 'customize-partial-options' ) || {};
+			options.constructingContainerContext = containerElement.data( 'customize-partial-container-context' ) || {};
+
+			partial = api.partial( id );
+			if ( ! partial ) {
+				Constructor = api.partialConstructor[ type ] || api.Partial;
+				partial = new Constructor( id, options );
+				api.partial.add( partial.id, partial );
+			}
+		} );
+	};
+
 	api.bind( 'preview-ready', function() {
 		var handleSettingChange, watchSettingChange, unwatchSettingChange;
 
@@ -577,6 +612,18 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		api.bind( 'remove', unwatchSettingChange );
 		api.each( function( setting ) {
 			setting.bind( handleSettingChange );
+		} );
+
+		// Add (dynamic) partials that are declared via data attributes, and add new ones as the document changes.
+		self.addPartials();
+		self.mutationObserver = new MutationObserver( function( mutations ) {
+			_.each( mutations, function( mutation ) {
+				self.addPartials( $( mutation.target ).parent() );
+			} );
+		} );
+		self.mutationObserver.observe( document.body, {
+			childList: true,
+			subtree: true
 		} );
 
 		api.preview.bind( 'active', function() {

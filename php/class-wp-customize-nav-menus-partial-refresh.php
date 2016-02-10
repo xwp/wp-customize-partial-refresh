@@ -3,6 +3,7 @@
  * WP_Customize_Nav_Menus_Partial_Refresh class.
  *
  * @package WordPress
+ * @subpackage Customize
  */
 
 /**

@@ -61,7 +61,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			}
 
 			partial.widgetId = matches[1];
-
 			options = options || {};
 			options.params = _.extend(
 				{
@@ -287,7 +286,11 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				var widgetPartial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
 				if ( widgetPartial ) {
 					_.each( widgetPartial.containers(), function( container ) {
-						if ( container.context.sidebar_id === sidebarPartial.sidebarId ) {
+						var isRemoved = (
+							container.context.sidebar_id === sidebarPartial.sidebarId ||
+							( container.context.sidebar_args && container.context.sidebar_args.id === sidebarPartial.sidebarId )
+						);
+						if ( isRemoved ) {
 							container.element.remove();
 						}
 					} );
@@ -350,6 +353,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	});
 
 	api.partialConstructor.widget_area = self.WidgetAreaPartial;
+	api.partialConstructor.widget_instance = self.WidgetInstancePartial;
 
 	/**
 	 * Add partials for the registered widget areas (sidebars).

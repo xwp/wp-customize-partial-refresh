@@ -3,6 +3,8 @@
  * WP_Customize_Widgets_Partial_Refresh class.
  *
  * @package WordPress
+ * @subpackage Customize
+ * @since 4.5.0
  */
 
 /**
@@ -315,6 +317,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 *
 	 * Note that the array is expected to be pre-sorted.
 	 *
+	 * @todo We should actually be able to get by without including sidebar_args in the context at all. We only need a sidebar_id. Explore removing sidebar_args.
+	 *
 	 * @since 4.5.0
 	 * @access public
 	 *
@@ -404,19 +408,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 			$sidebar_id = $context['sidebar_id'];
 		} else if ( ! empty( $sidebar_args['id'] ) ) {
 			$sidebar_id = $sidebar_args['id'];
-		} else if ( ! empty( $context['sidebar_args']['before_widget'] ) && ! empty( $context['sidebar_args']['after_widget'] ) ) {
-			/*
-			 * The intention in this condition is to handle standalone widgets,
-			 * rendered such as via the_widget() or rendered nested inside other
-			 * widgets. However, the logic is not fully baked here and it should
-			 * be removed for now.
-			 * @todo Remove this condition.
-			 */
-			$sidebar_id = 'customize-partial-widget-' . $widget_id;
-			register_sidebar( array_merge(
-				$context['sidebar_args'],
-				array( 'id' => $sidebar_id )
-			) );
 		} else {
 			return false;
 		}
