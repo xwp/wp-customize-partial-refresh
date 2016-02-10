@@ -73,9 +73,22 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			);
 
 			api.Partial.prototype.initialize.call( partial, id, options );
-		}
+		},
 
-		// @todo refresh should be called by default if the response contains script:not([type]), script[type='text/javascript']?
+		/**
+		 * Send widget-updated message to parent so spinner will get removed from widget control.
+		 *
+		 * @todo Fill page refresh should be called by default if the response contains script:not([type]), script[type='text/javascript']?
+		 *
+		 * @inheritdoc
+		 * @param {object} container
+		 */
+		renderContent: function( container ) {
+			var partial = this;
+			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
+				api.preview.send( 'widget-updated', partial.widgetId );
+			}
+		}
 	});
 
 	/**
