@@ -8,4 +8,4 @@
 		}
 	} );
 
-}( wp.customize ));
+}( wp.customize ) );
