@@ -141,7 +141,12 @@ class WP_Customize_Selective_Refresh {
 	 *
 	 * @param WP_Styles $wp_styles Styles.
 	 */
-	function register_styles( $wp_styles ) {}
+	function register_styles( $wp_styles ) {
+		$handle = 'customize-partial-refresh-widgets-preview';
+		$src = $this->dir_url . 'css/customize-partial-refresh-widgets-preview.css';
+		$deps = array( 'customize-preview' );
+		$wp_styles->add( $handle, $src, $deps, $this->get_version() );
+	}
 
 	/**
 	 * Registered instances of WP_Customize_Partial.

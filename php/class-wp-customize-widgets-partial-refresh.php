@@ -116,6 +116,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	public function customize_preview_enqueue_deps() {
 		wp_enqueue_script( 'customize-preview-widgets' ); // Note that we have overridden this.
 		wp_enqueue_style( 'customize-preview' );
+		wp_enqueue_style( 'customize-partial-refresh-widgets-preview' );
 	}
 
 	/**
