@@ -1,7 +1,3 @@
-.customize-partial-refreshing {
-	opacity: 0.25;
-	transition: opacity 0.25s;
-}
 
 /* Override highlight when refreshing */
 .customize-partial-refreshing.widget-customizer-highlighted-widget {
