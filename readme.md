@@ -13,7 +13,7 @@ Refresh parts of the Customizer preview instead of reloading the entire page.
 
 ## Description ##
 
-**This is a feature plugin proposed for WordPress 4.5*
+**This is a feature plugin proposed for WordPress 4.5**
 
 The WordPress Customizer is a framework for previewing any change to a site.
 By default, settings exposed in the Customizer use a `refresh` transport,
