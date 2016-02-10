@@ -189,9 +189,9 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		containerElements.each( function() {
 			var containerElement = $( this ), partial, id, navMenuArgs;
 			id = containerElement.data( 'customize-partial-id' );
-			navMenuArgs = containerElement.data( 'customize-container-context' );
+			navMenuArgs = containerElement.data( 'customize-partial-container-context' );
 			if ( ! navMenuArgs || ! navMenuArgs.args_hmac ) {
-				throw new Error( 'Missing customize-container-context that includes navMenuArgs and args_hmac' );
+				throw new Error( 'Missing customize-partial-container-context that includes navMenuArgs and args_hmac' );
 			}
 
 			partial = api.partial( id );

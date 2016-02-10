@@ -161,18 +161,18 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 	public function filter_wp_nav_menu( $nav_menu_content, $args ) {
 		if ( ! empty( $args->customize_preview_nav_menus_args ) ) {
-			$attributes = ' data-customize-partial-type="nav_menu_placement"';
-			$attributes .= ' data-customize-partial-options="{}"';
-			$attributes .= sprintf( ' data-customize-partial-id="%s"', esc_attr( 'nav_menu_placement[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ) );
-			$attributes .= sprintf( ' data-customize-container-context="%s"', esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) ) );
+			$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'nav_menu_placement[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ) );
+			$attributes .= ' data-customize-partial-type="nav_menu_placement"';
+			$attributes .= sprintf( ' data-customize-partial-container-context="%s"', esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) ) );
 			$nav_menu_content = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $nav_menu_content, 1 );
 		}
 		return $nav_menu_content;
 	}
 
 	/**
-	 * Hash (hmac) the arguments with the nonce and secret auth key to ensure they
-	 * are not tampered with when submitted in the Ajax request.
+	 * Hash (hmac) the nav menu args to ensure they are not tampered with when submitted in the Ajax request.
+	 *
+	 * Note that the array is expected to be pre-sorted.
 	 *
 	 * @since 4.3.0
 	 * @access public

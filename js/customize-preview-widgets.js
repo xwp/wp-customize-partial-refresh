@@ -135,20 +135,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					setting.bind( _.bind( partial.handleSettingChange, partial ) );
 				} );
 			} );
-
-			api.bind( 'change', function( setting ) {
-				var widgetId, parsedId = self.parseWidgetSettingId( setting.id );
-				if ( ! parsedId ) {
-					return;
-				}
-				widgetId = parsedId.idBase;
-				if ( parsedId.number ) {
-					widgetId += '-' + String( parsedId.number );
-				}
-
-				// @todo This is an expensive operation.
-				partial.ensureWidgetInstanceContainers( widgetId );
-			} );
 		},
 
 		/**
@@ -252,20 +238,24 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 						sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
 						sidebarPartial.params.sidebarArgs.after_widget
 					);
+
+					widgetContainerElement.attr( 'data-customize-partial-id', widgetPartial.id );
+					widgetContainerElement.attr( 'data-customize-partial-type', 'widget_instance' );
 					widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
+
+					/*
+					 * Make sure the widget container element has the customize-container context data.
+					 * The sidebar_instance_number is used to disambiguate multiple instances of the
+					 * same sidebar are rendered onto the template, and so the same widget is embedded
+					 * multiple times.
+					 */
+					widgetContainerElement.data( 'customize-partial-container-context', {
+						'sidebar_id': sidebarPartial.sidebarId,
+						'sidebar_instance_number': widgetAreaContainer.instanceNumber
+					} );
+
 					widgetAreaContainer.afterNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaContainer.afterNode );
 				}
-
-				/*
-				 * Make sure the widget container element has the customize-container context data.
-				 * The sidebar_instance_number is used to disambiguate multiple instances of the
-				 * same sidebar are rendered onto the template, and so the same widget is embedded
-				 * multiple times.
-				 */
-				widgetContainerElement.data( 'customize-container-context', {
-					'sidebar_id': sidebarPartial.sidebarId,
-					'sidebar_instance_number': widgetAreaContainer.instanceNumber
-				} );
 			} );
 
 			return widgetPartial;
@@ -329,7 +319,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					} );
 				} );
 
-				// @todo trigger event when the element is moved because some elements will need to be re-built.
+				// @todo trigger event when the element is moved because some elements will need to be re-built. Or the document can just use MutationObservers.
 			} );
 
 			_.each( addedWidgetInstancePartials, function( widgetPartial ) {

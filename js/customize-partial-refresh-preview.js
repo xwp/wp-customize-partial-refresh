@@ -105,10 +105,16 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		containers: function() {
 			var partial = this;
 			return $( partial.params.selector ).map( function() {
-				var container = $( this );
+				var container = $( this ), context;
+
+				context = container.data( 'customize-partial-container-context' );
+				if ( _.isString( context ) && '{' === context.substr( 0, 1 ) ) {
+					throw new Error( 'context JSON parse error' );
+				}
+
 				return {
 					element: container,
-					context: container.data( 'customize-container-context' )
+					context: context
 				};
 			} ).get();
 		},
@@ -260,11 +266,11 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				// @todo merge more than just the context; copy/merge all data?
 				context = _.extend(
 					{},
-					oldContainer.data( 'customize-container-context' ) || {},
-					newContainer.data( 'customize-container-context' ) || {}
+					oldContainer.data( 'customize-partial-container-context' ) || {},
+					newContainer.data( 'customize-partial-container-context' ) || {}
 				);
 				if ( ! _.isEmpty( context ) ) {
-					newContainer.data( 'customize-container-context', context );
+					newContainer.data( 'customize-partial-container-context', context );
 				}
 
 				container.element = newContainer;
