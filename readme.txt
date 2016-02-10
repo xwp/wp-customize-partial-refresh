@@ -1,5 +1,5 @@
 === Customize Partial Refresh ===
-Contributors:      xwp, westonruter
+Contributors:      xwp, westonruter, valendesigns
 Tags:              customizer, customize, preview
 Requires at least: 4.5-alpha-35776
 Stable tag:        trunk
@@ -51,8 +51,10 @@ is also implemented using the same framework.
 
 Other examples of selective refresh:
 
-* [Site title smilies](https://gist.github.com/westonruter/a15b99bdd07e6f4aae7a)
-* [Welcome message](https://gist.github.com/westonruter/ed4ae3f8b6f6d653e0c6)
+* [Site Title Smilies](https://gist.github.com/westonruter/a15b99bdd07e6f4aae7a)
+* [Welcome Message](https://gist.github.com/westonruter/ed4ae3f8b6f6d653e0c6)
+
+Trivial example of Site Title Smilies showing `wptexturize` also applying in the preview:
 
 [youtube https://www.youtube.com/watch?v=ikW8dfaOPng]
 
@@ -63,6 +65,8 @@ altogether since the Customizer pane could then slide-in on any existing
 frontend page the user is on without having enter into a completely different
 Customizer state; when done, they can just collapse the Customizer away and
 continue on their way browsing the site.
+
+**Development of this plugin is done [on GitHub](https://github.com/xwp/wp-customize-partial-refresh). Pull requests welcome. Please see [issues](https://github.com/xwp/wp-customize-partial-refresh/issues) reported there before going to the [plugin forum](https://wordpress.org/support/plugin/customize-partial-refresh).**
 
 == Changelog ==
 
