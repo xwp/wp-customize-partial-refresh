@@ -373,7 +373,7 @@ class WP_Customize_Selective_Refresh {
 	 * @return bool Whether the request is for rendering partials.
 	 */
 	public function is_render_partials_request() {
-		return ! empty( $_POST[ static::RENDER_QUERY_VAR ] );
+		return ! empty( $_POST[ self::RENDER_QUERY_VAR ] );
 	}
 
 	/**
