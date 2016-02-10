@@ -147,6 +147,20 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					setting.bind( _.bind( partial.handleSettingChange, partial ) );
 				} );
 			} );
+
+			api.bind( 'change', function( setting ) {
+				var widgetId, parsedId = self.parseWidgetSettingId( setting.id );
+				if ( ! parsedId ) {
+					return;
+				}
+				widgetId = parsedId.idBase;
+				if ( parsedId.number ) {
+					widgetId += '-' + String( parsedId.number );
+				}
+
+				// @todo This is an expensive operation. Optimize.
+				partial.ensureWidgetInstanceContainers( widgetId );
+			} );
 		},
 
 		/**
