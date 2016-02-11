@@ -257,6 +257,8 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function enqueue_preview_scripts() {
 		wp_enqueue_script( 'customize-partial-refresh-preview' );
+		$wp_scripts = wp_scripts();
+		$wp_styles = wp_styles();
 
 		/*
 		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
@@ -266,16 +268,38 @@ class WP_Customize_Selective_Refresh {
 		 * Hard-coded reference to a Jetpack module's event is not relevant for #coremerge.
 		 */
 		if ( class_exists( 'Jetpack' ) ) {
+			$exports = array();
 			$handle = 'customize-partial-jetpack-support';
 			$src = $this->dir_url . 'js/plugin-support/jetpack.js';
 			$deps = array( 'customize-partial-refresh-preview' );
 			$in_footer = true;
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 
-			$exports = array(
-				'themeSupportsInfiniteScroll' => current_theme_supports( 'infinite-scroll' ),
-				'infiniteScrollModuleActive' => Jetpack::is_module_active( 'infinite-scroll' ),
-			);
+			if ( Jetpack::is_module_active( 'infinite-scroll' ) ) {
+				$exports['infiniteScroll'] = array(
+					'themeSupport' => current_theme_supports( 'infinite-scroll' ),
+				);
+			}
+
+			if ( Jetpack::is_module( 'widgets' ) ) {
+				$exports['widgets'] = array(
+					'scripts' => array(
+						'google-maps' => array(
+							'src' => 'https://maps.googleapis.com/maps/api/js?sensor=false',
+						),
+						'contact-info-map-js' => array(
+							'src' => plugins_url( 'modules/widgets/contact-info/contact-info-map.js', JETPACK__PLUGIN_FILE ),
+							'deps' => array( 'jquery', 'google-maps' ),
+						),
+					),
+					'styles' => array(
+						'contact-info-map-css' => array(
+							'src' => plugins_url( 'modules/widgets/contact-info/contact-info-map.css', JETPACK__PLUGIN_FILE ),
+						),
+					),
+				);
+			}
+
 			wp_scripts()->add_data( $handle, 'data', sprintf( 'var _customizeSelectiveRefreshJetpackExports = %s;', wp_json_encode( $exports ) ) );
 		}
 
