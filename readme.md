@@ -73,7 +73,13 @@ continue on their way browsing the site.
 
 ## Changelog ##
 
-### 0.5.0 ###
+### 0.5.1=
+* Fix broken Ajax in preview by adding missing script dependency for wp-util.
+* Add support for plugin loaded via theme (on WordPress.com).
+* Ensure that dynamic_sidebar_params filter applies during partials render request.
+* Remove unnecessary is_registered_sidebar() which broke nested sidebar stack
+
+= 0.5.0 ###
 Complete rewrite utilizing new selective/partial refresh framework. Selective refreshing of nav menus (in core) and widgets (in this plugin) were rewritten to make use of the new framework. Documentation forthcoming.
 
 ### 0.4.3 ###
