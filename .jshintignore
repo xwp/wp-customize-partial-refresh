@@ -1,6 +1,0 @@
-**/vendor/**
-**/*.min.js
-**/customize-partial-refresh-base.js
-**/customize-partial-refresh-widgets-*.js
-**/twentythirteen.js
-**/node_modules/**
