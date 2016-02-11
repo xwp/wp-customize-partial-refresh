@@ -113,7 +113,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			matches = id.match( /^widget_area\[(.+)]$/ );
 			if ( ! matches ) {
 				throw new Error( 'Illegal id for widget_area partial.' );
-
 			}
 			partial.sidebarId = matches[1];
 
@@ -129,6 +128,9 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 			if ( ! partial.params.sidebarArgs ) {
 				throw new Error( 'The sidebarArgs param was not provided.' );
+			}
+			if ( partial.params.settings.length > 1 ) {
+				throw new Error( 'Expected WidgetAreaPartial to only have one associated setting' );
 			}
 
 			partial.containerStartBoundaryNode = null;
@@ -234,6 +236,83 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		},
 
 		/**
+		 * Get the list of widget IDs associated with this widget area.
+		 *
+		 * @since 4.5.0
+		 *
+		 * @returns {Array}
+		 */
+		getWidgetIds: function() {
+			var sidebarPartial = this, settingId, widgetIds;
+			settingId = sidebarPartial.settings()[0];
+			if ( ! settingId ) {
+				throw new Error( 'Missing associated setting.' );
+			}
+			if ( ! api.has( settingId ) ) {
+				throw new Error( 'Setting does not exist.' );
+			}
+			widgetIds = api( settingId ).get();
+			if ( ! _.isArray( widgetIds ) ) {
+				throw new Error( 'Expected setting to be array of widget IDs' );
+			}
+			return widgetIds.slice( 0 );
+		},
+
+		/**
+		 * Reflow widgets in the sidebar, ensuring they have the proper position in the DOM.
+		 *
+		 * @since 4.5.0
+		 */
+		reflowWidgets: function() {
+			var sidebarPartial = this, sidebarContainers, widgetIds, widgetPartials;
+			widgetIds = sidebarPartial.getWidgetIds();
+			sidebarContainers = sidebarPartial.containers();
+
+			widgetPartials = {};
+			_.each( widgetIds, function( widgetId ) {
+				widgetPartials[ widgetId ] = sidebarPartial.ensureWidgetInstanceContainers( widgetId );
+			} );
+
+			// Ensure that there are containers for all of the widgets, and that the order is correct.
+			_.each( sidebarContainers, function( sidebarContainer ) {
+				var sidebarWidgets = [], needsSort = false, thisPosition, lastPosition = -1;
+
+				// Gather list of widget partial containers in this sidebar, and determine if a sort is needed.
+				_.each( widgetPartials, function( widgetPartial ) {
+					_.each( widgetPartial.containers(), function( widgetContainer ) {
+						if ( sidebarContainer.instanceNumber === widgetContainer.context.sidebar_instance_number ) {
+							thisPosition = widgetContainer.element.index();
+							sidebarWidgets.push( {
+								partial: widgetPartial,
+								container: widgetContainer,
+								position: thisPosition
+							} );
+							if ( thisPosition < lastPosition ) {
+								needsSort = true;
+							}
+							lastPosition = thisPosition;
+						}
+					} );
+				} );
+
+				if ( needsSort ) {
+					_.each( sidebarWidgets, function( sidebarWidget ) {
+						sidebarContainer.afterNode.parentNode.insertBefore(
+							sidebarWidget.container.element[0],
+							sidebarContainer.afterNode
+						);
+
+						api.trigger( 'partial-content-moved', {
+							partial: sidebarWidget.partial,
+							context: sidebarWidget.container.context,
+							container: sidebarWidget.container.element
+						} );
+					} );
+				}
+			} );
+		},
+
+		/**
 		 * Make sure there is a widget instance container in this sidebar for the given widget ID.
 		 *
 		 * @since 4.5.0
@@ -244,7 +323,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * @returns {wp.customize.Partial} Widget instance partial.
 		 */
 		ensureWidgetInstanceContainers: function( widgetId ) {
-			var sidebarPartial = this, widgetPartial, partialId = 'widget_instance[' + widgetId + ']';
+			var sidebarPartial = this, widgetPartial, wasInserted = false, partialId = 'widget_instance[' + widgetId + ']';
 			widgetPartial = api.partial( partialId );
 			if ( ! widgetPartial ) {
 				widgetPartial = new self.WidgetInstancePartial( partialId, {
@@ -293,8 +372,13 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					} );
 
 					widgetAreaContainer.afterNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaContainer.afterNode );
+					wasInserted = true;
 				}
 			} );
+
+			if ( wasInserted ) {
+				sidebarPartial.reflowWidgets();
+			}
 
 			return widgetPartial;
 		},
@@ -308,7 +392,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * @param {Array} oldWidgetIds Old widget ids.
 		 */
 		handleSettingChange: function( newWidgetIds, oldWidgetIds ) {
-			var sidebarPartial = this, sidebarContainers, needsRefresh, widgetsRemoved, widgetsAdded, addedWidgetInstancePartials = [];
+			var sidebarPartial = this, needsRefresh, widgetsRemoved, widgetsAdded, addedWidgetInstancePartials = [];
 
 			needsRefresh = (
 				( oldWidgetIds.length > 0 && 0 === newWidgetIds.length ) ||
@@ -343,26 +427,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				addedWidgetInstancePartials.push( widgetPartial );
 			} );
 
-			sidebarContainers = sidebarPartial.containers();
-
-			// Ensure that there are containers for all of the widgets, and that the order is correct.
-			_.each( newWidgetIds, function( widgetId ) {
-				var widgetPartial = sidebarPartial.ensureWidgetInstanceContainers( widgetId );
-				if ( -1 !== _.indexOf( widgetsAdded, widgetId ) ) {
-					addedWidgetInstancePartials.push( widgetPartial );
-				}
-
-				// Re-sort the DOM elements for the widgets.
-				_.each( widgetPartial.containers(), function( widgetContainer ) {
-					_.each( sidebarContainers, function( sidebarContainer ) {
-						if ( sidebarContainer.instanceNumber === widgetContainer.context.sidebar_instance_number ) {
-							sidebarContainer.afterNode.parentNode.insertBefore( widgetContainer.element[0], sidebarContainer.afterNode );
-						}
-					} );
-				} );
-
-				// @todo trigger event when the element is moved because some elements will need to be re-built. Or the document can just use MutationObservers.
-			} );
+			sidebarPartial.reflowWidgets();
 
 			_.each( addedWidgetInstancePartials, function( widgetPartial ) {
 				widgetPartial.refresh();
