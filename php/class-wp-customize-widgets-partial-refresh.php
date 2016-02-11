@@ -268,9 +268,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 * @param int|string $index Index, name, or ID of the dynamic sidebar.
 	 */
 	public function start_dynamic_sidebar( $index ) {
-		if ( ! is_registered_sidebar( $index ) ) {
-			return;
-		}
 		array_unshift( $this->current_dynamic_sidebar_id_stack, $index );
 		if ( ! isset( $this->sidebar_instance_count[ $index ] ) ) {
 			$this->sidebar_instance_count[ $index ] = 0;
@@ -291,9 +288,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 * @param int|string $index Index, name, or ID of the dynamic sidebar.
 	 */
 	public function end_dynamic_sidebar( $index ) {
-		if ( ! is_registered_sidebar( $index ) ) {
-			return;
-		}
 		assert( array_shift( $this->current_dynamic_sidebar_id_stack ) === $index );
 		if ( ! $this->manager->selective_refresh->is_render_partials_request() ) {
 			printf( "\n<!--dynamic_sidebar_after:%s:%d-->\n", esc_html( $index ), intval( $this->sidebar_instance_count[ $index ] ) );
