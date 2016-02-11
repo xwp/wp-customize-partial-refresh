@@ -70,7 +70,14 @@ continue on their way browsing the site.
 
 == Changelog ==
 
-= 0.5.1=
+= 0.5.2 =
+* Fix position of widget in sidebar if a `widget_instance` partial container is inserted prior to an refresh.
+* Only sort the DOM if the order has changed, to improve performance.
+* Introduce `getWidgetIds` and `reflowWidgets` methods for widget area partial.
+* Introduce `partial-content-moved` event when a widget is re-ordered.
+* Add support for Jetpack's Twitter Timeline and Contact Info widgets.
+
+= 0.5.1 =
 * Fix broken Ajax in preview by adding missing script dependency for wp-util.
 * Add support for plugin loaded via theme (on WordPress.com).
 * Ensure that dynamic_sidebar_params filter applies during partials render request.
