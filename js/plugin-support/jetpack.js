@@ -134,7 +134,9 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 						self.loadScript({
 							handle: 'google-maps',
 							src: config.scripts['google-maps'].src,
-							test: function() { return 'undefined' !== typeof google && 'undefined' !== typeof google.maps; }
+							test: function() {
+								return 'undefined' !== typeof google && 'undefined' !== typeof google.maps;
+							}
 						}).done( function() {
 
 							// The logic in this script has to be loaded anew each time.
