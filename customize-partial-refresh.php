@@ -58,3 +58,17 @@ function customize_partial_refresh_filter_customize_loaded_components( $componen
 }
 
 add_filter( 'customize_loaded_components', 'customize_partial_refresh_filter_customize_loaded_components', 100, 2 );
+
+// Bootstrap immediately in case the Customizer has already been initialized (as on WordPress.com VIP).
+global $wp_customize;
+if ( ! empty( $wp_customize ) && $wp_customize instanceof WP_Customize_Manager ) {
+	$customize_loaded_components = array();
+	if ( isset( $wp_customize->widgets ) ) {
+		$customize_loaded_components[] = 'widgets';
+	}
+	if ( isset( $wp_customize->nav_menus ) ) {
+		$customize_loaded_components[] = 'nav_menus';
+	}
+	customize_partial_refresh_filter_customize_loaded_components( $customize_loaded_components, $wp_customize );
+	unset( $customize_loaded_components );
+}
