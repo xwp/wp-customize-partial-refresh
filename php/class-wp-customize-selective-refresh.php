@@ -407,6 +407,49 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
+	 * Log of errors triggered when partials are rendered.
+	 *
+	 * @since 4.5.0
+	 * @access private
+	 * @var array
+	 */
+	protected $triggered_errors = array();
+
+	/**
+	 * Keep track of the current partial being rendered.
+	 *
+	 * @since 4.5.0
+	 * @access private
+	 * @var string
+	 */
+	protected $current_partial_id;
+
+	/**
+	 * Handle PHP error triggered during rendering the partials.
+	 *
+	 * These errors will be relayed back to the client in the Ajax response.
+	 *
+	 * @since 4.5.0
+	 * @access private
+	 *
+	 * @param int    $errno   Error number.
+	 * @param string $errstr  Error string.
+	 * @param string $errfile Error file.
+	 * @param string $errline Error line.
+	 * @return bool
+	 */
+	public function handle_error( $errno, $errstr, $errfile = null, $errline = null ) {
+		$this->triggered_errors[] = array(
+			'partial' => $this->current_partial_id,
+			'error_number' => $errno,
+			'error_string' => $errstr,
+			'error_file' => $errfile,
+			'error_line' => $errline,
+		);
+		return true;
+	}
+
+	/**
 	 * Handle Ajax request to return the settings partial value.
 	 *
 	 * @since 4.5.0
@@ -449,8 +492,10 @@ class WP_Customize_Selective_Refresh {
 		 */
 		do_action( 'customize_render_partials_before', $this );
 
+		set_error_handler( array( $this, 'handle_error' ), error_reporting() );
 		$contents = array();
 		foreach ( $partials as $partial_id => $container_contexts ) {
+			$this->current_partial_id = $partial_id;
 			if ( ! is_array( $container_contexts ) ) {
 				wp_send_json_error( 'malformed_container_contexts' );
 			}
@@ -471,10 +516,15 @@ class WP_Customize_Selective_Refresh {
 				}
 			}
 		}
+		$this->current_partial_id = null;
+		restore_error_handler();
 
 		$response = array(
 			'contents' => $contents,
 		);
+		if ( defined( 'WP_DEBUG_DISPLAY' ) && WP_DEBUG_DISPLAY ) {
+			$response['errors'] = $this->triggered_errors;
+		}
 
 		/**
 		 * Filter the response from rendering the partials.
@@ -492,6 +542,7 @@ class WP_Customize_Selective_Refresh {
 		 *     Response.
 		 *
 		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
+		 *     @type array [$errors]  List of errors triggered during rendering of partials, if WP_DEBUG_DISPLAY is enabled.
 		 * }
 		 *
 		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
