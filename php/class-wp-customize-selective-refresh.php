@@ -115,7 +115,7 @@ class WP_Customize_Selective_Refresh {
 
 		$handle = 'customize-partial-refresh-preview';
 		$src = $this->dir_url . 'js/customize-partial-refresh-preview.js';
-		$deps = array( 'customize-preview' );
+		$deps = array( 'customize-preview', 'wp-util' );
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 

@@ -91,10 +91,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 		add_action( 'wp_enqueue_scripts', array( $this, 'customize_preview_enqueue_deps' ) );
 		add_filter( 'dynamic_sidebar_params', array( $this, 'filter_dynamic_sidebar_params' ) );
 		add_filter( 'wp_kses_allowed_html', array( $this, 'filter_wp_kses_allowed_data_attributes' ) );
-		if ( ! $this->manager->selective_refresh->is_render_partials_request() ) {
-			add_action( 'dynamic_sidebar_before', array( $this, 'insert_before_sidebar_marker' ) );
-			add_action( 'dynamic_sidebar_after', array( $this, 'insert_after_sidebar_marker' ) );
-		}
+		add_action( 'dynamic_sidebar_before', array( $this, 'start_dynamic_sidebar' ) );
+		add_action( 'dynamic_sidebar_after', array( $this, 'end_dynamic_sidebar' ) );
 	}
 
 	/**
@@ -261,37 +259,39 @@ class WP_Customize_Widgets_Partial_Refresh {
 	protected $current_dynamic_sidebar_id_stack = array();
 
 	/**
+	 * Start keeping track of the current sidebar being rendered.
+	 *
 	 * Insert marker before widgets are rendered in a dynamic sidebar.
 	 *
 	 * @since 4.5.0
 	 *
 	 * @param int|string $index Index, name, or ID of the dynamic sidebar.
 	 */
-	public function insert_before_sidebar_marker( $index ) {
-		if ( ! is_registered_sidebar( $index ) ) {
-			return;
-		}
+	public function start_dynamic_sidebar( $index ) {
 		array_unshift( $this->current_dynamic_sidebar_id_stack, $index );
 		if ( ! isset( $this->sidebar_instance_count[ $index ] ) ) {
 			$this->sidebar_instance_count[ $index ] = 0;
 		}
 		$this->sidebar_instance_count[ $index ] += 1;
-		printf( "\n<!--dynamic_sidebar_before:%s:%d-->\n", esc_html( $index ), intval( $this->sidebar_instance_count[ $index ] ) );
+		if ( ! $this->manager->selective_refresh->is_render_partials_request() ) {
+			printf( "\n<!--dynamic_sidebar_before:%s:%d-->\n", esc_html( $index ), intval( $this->sidebar_instance_count[ $index ] ) );
+		}
 	}
 
 	/**
+	 * Finish keeping track of the current sidebar being rendered.
+	 *
 	 * Insert marker after widgets are rendered in a dynamic sidebar.
 	 *
 	 * @since 4.5.0
 	 *
 	 * @param int|string $index Index, name, or ID of the dynamic sidebar.
 	 */
-	public function insert_after_sidebar_marker( $index ) {
-		if ( ! is_registered_sidebar( $index ) ) {
-			return;
-		}
+	public function end_dynamic_sidebar( $index ) {
 		assert( array_shift( $this->current_dynamic_sidebar_id_stack ) === $index );
-		printf( "\n<!--dynamic_sidebar_after:%s:%d-->\n", esc_html( $index ), intval( $this->sidebar_instance_count[ $index ] ) );
+		if ( ! $this->manager->selective_refresh->is_render_partials_request() ) {
+			printf( "\n<!--dynamic_sidebar_after:%s:%d-->\n", esc_html( $index ), intval( $this->sidebar_instance_count[ $index ] ) );
+		}
 	}
 
 	/**
