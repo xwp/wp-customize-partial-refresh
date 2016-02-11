@@ -265,12 +265,18 @@ class WP_Customize_Selective_Refresh {
 		 *
 		 * Hard-coded reference to a Jetpack module's event is not relevant for #coremerge.
 		 */
-		if ( class_exists( 'Jetpack' ) && Jetpack::is_module_active( 'infinite-scroll' ) && current_theme_supports( 'infinite-scroll' ) ) {
-			$handle = 'customize-partial-jetpack-infinite-scroll-integration';
-			$src = $this->dir_url . 'js/jetpack-infinite-scroll-integration.js';
-			$deps = array( 'the-neverending-homepage', 'customize-partial-refresh-preview' );
+		if ( class_exists( 'Jetpack' ) ) {
+			$handle = 'customize-partial-jetpack-support';
+			$src = $this->dir_url . 'js/plugin-support/jetpack.js';
+			$deps = array( 'customize-partial-refresh-preview' );
 			$in_footer = true;
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
+
+			$exports = array(
+				'themeSupportsInfiniteScroll' => current_theme_supports( 'infinite-scroll' ),
+				'infiniteScrollModuleActive' => Jetpack::is_module_active( 'infinite-scroll' ),
+			);
+			wp_scripts()->add_data( $handle, 'data', sprintf( 'var _customizeSelectiveRefreshJetpackExports = %s;', wp_json_encode( $exports ) ) );
 		}
 
 		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
