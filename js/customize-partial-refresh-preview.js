@@ -285,6 +285,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			}
 
 			container.element.removeClass( 'customize-partial-refreshing' );
+			container.element.data( 'customize-partial-content-rendered', true );
 
 			/*
 			 * Trigger an event so that dynamic elements can be re-built.
@@ -527,35 +528,60 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	 * @since 4.5.0
 	 *
 	 * @param {jQuery|HTMLElement} [rootElement]
+	 * @param {object}             [options]
+	 * @param {boolean=true}       [options.triggerRendered]
 	 */
-	self.addPartials = function( rootElement ) {
+	self.addPartials = function( rootElement, options ) {
 		var containerElements;
 		if ( ! rootElement ) {
 			rootElement = document.body;
 		}
 		rootElement = $( rootElement );
+		options = _.extend(
+			{
+				triggerRendered: true
+			},
+			options || {}
+		);
 
 		containerElements = rootElement.find( '[data-customize-partial-id]' );
 		if ( rootElement.is( '[data-customize-partial-id]' ) ) {
 			containerElements = containerElements.add( rootElement );
 		}
 		containerElements.each( function() {
-			var containerElement = $( this ), partial, id, type, Constructor, options;
+			var containerElement = $( this ), partial, id, Constructor, partialOptions, containerContext;
 			id = containerElement.data( 'customize-partial-id' );
-			if ( api.partial.has( id ) ) {
+			if ( ! id ) {
 				return;
 			}
-
-			type = containerElement.data( 'customize-partial-type' );
-			options = containerElement.data( 'customize-partial-options' ) || {};
-			options.constructingContainerContext = containerElement.data( 'customize-partial-container-context' ) || {};
+			containerContext = containerElement.data( 'customize-partial-container-context' ) || {};
 
 			partial = api.partial( id );
 			if ( ! partial ) {
-				Constructor = api.partialConstructor[ type ] || api.Partial;
-				partial = new Constructor( id, options );
+				partialOptions = containerElement.data( 'customize-partial-options' ) || {};
+				partialOptions.constructingContainerContext = containerElement.data( 'customize-partial-container-context' ) || {};
+				Constructor = api.partialConstructor[ containerElement.data( 'customize-partial-type' ) ] || api.Partial;
+				partial = new Constructor( id, partialOptions );
 				api.partial.add( partial.id, partial );
 			}
+
+			/*
+			 * Only trigger renders on (nested) partials that have been not been
+			 * handled yet. An example where this would apply is a nav menu
+			 * embedded inside of a custom menu widget. When the widget's title
+			 * is updated, the entire widget will re-render and then the event
+			 * will be triggered for the nested nav menu to do any initialization.
+			 */
+			if ( options.triggerRendered && ! containerElement.data( 'customize-partial-content-rendered' ) ) {
+				api.trigger( 'partial-content-rendered', {
+					partial: partial,
+					content: null,
+					context: containerContext,
+					newContainer: containerElement,
+					oldContainer: null
+				} );
+			}
+			containerElement.data( 'customize-partial-content-rendered', true );
 		} );
 	};
 
@@ -631,7 +657,9 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		} );
 
 		// Add (dynamic) initial partials that are declared via data-* attributes.
-		self.addPartials();
+		self.addPartials( document.body, {
+			triggerRendered: false
+		} );
 
 		// Add new dynamic partials when the document changes.
 		if ( 'undefined' !== typeof MutationObserver ) {
@@ -645,6 +673,17 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				subtree: true
 			} );
 		}
+
+		/**
+		 * Handle rendering of partials.
+		 *
+		 * @param {object}               args
+		 * @param {wp.customize.Partial} args.partial
+		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
+		 * @param {object}               args.context
+		 * @param {jQuery}               args.newContainer
+		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
+		 */
 		api.bind( 'partial-content-rendered', function( args ) {
 			self.addPartials( args.newContainer );
 		} );
