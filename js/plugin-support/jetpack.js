@@ -1,4 +1,4 @@
-/* global twttr, google, _customizeSelectiveRefreshJetpackExports */
+/* global twttr, google, FB, _customizeSelectiveRefreshJetpackExports */
 /* exported customizeSelectiveRefreshJetpackModuleSupport */
 
 /**
@@ -54,7 +54,9 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 
 	moduleSupport.widgets = function( config ) {
 
-		var module = {};
+		var module = {
+			widgetRenderHandlers: {}
+		};
 
 		/**
 		 * Get the widget ID base for a given partial.
@@ -75,6 +77,78 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		};
 
 		/**
+		 * Handle rendering of Twitter Timeline widget
+		 *
+		 * @param args
+		 */
+		module.widgetRenderHandlers.twitter_timeline = function( args ) {
+			var hasWidgetIdSupplied = false, dependency;
+
+			args.newContainer.find( '.twitter-timeline[data-widget-id]' ).each( function() {
+				if ( $( this ).data( 'widgetId' ) ) {
+					hasWidgetIdSupplied = true;
+				}
+			} );
+			if ( ! hasWidgetIdSupplied ) {
+				return;
+			}
+			dependency = {
+				handle: 'twitter-wjs',
+				src: '//platform.twitter.com/widgets.js',
+				test: function() {
+					return 'undefined' !== typeof twttr && twttr.widgets && twttr.widgets.load;
+				}
+			};
+			self.loadScript( dependency ).done(function() {
+				twttr.widgets.load( args.newContainer[0] );
+			});
+		};
+
+		/**
+		 * Handle rendering of Contact Info widget.
+		 *
+		 * @param {object} args
+		 */
+		module.widgetRenderHandlers.widget_contact_info = function( args ) {
+			if ( ! args.newContainer.find( '.contact-map' ).length ) {
+				return;
+			}
+			if ( $( 'link#contact-info-map-css-css' ).length < 1 ) {
+				$( 'head:first' ).append( $( '<link>', {
+					id: 'contact-info-map-css-css', // The doubled 'css' is intentional.
+					rel: 'stylesheet',
+					href: config.styles['contact-info-map-css'].src,
+					type: 'text/css'
+				} ) );
+			}
+
+			self.loadScript({
+				handle: 'google-maps',
+				src: config.scripts['google-maps'].src,
+				test: function() {
+					return 'undefined' !== typeof google && 'undefined' !== typeof google.maps;
+				}
+			}).done( function() {
+
+				// The logic in this script has to be loaded anew each time.
+				$.getScript( config.scripts['contact-info-map-js'].src );
+			} );
+		};
+
+		/**
+		 * Handle rendering of Facebook Page widget.
+		 *
+		 * @param {object} args
+		 */
+		module.widgetRenderHandlers['facebook-likebox'] = function( args ) {
+			if ( 'undefined' !== typeof FB ) {
+
+				// @todo This is not reliably rebuilding the Like box, especially after the widget is dragged to a new position and a change is made.
+				FB.XFBML.parse( args.newContainer[0] );
+			}
+		};
+
+		/**
 		 * Handle rendering of partials.
 		 *
 		 * @param {object}               args
@@ -85,65 +159,9 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 * @param {jQuery}               args.oldContainer
 		 */
 		api.bind( 'partial-content-rendered', function( args ) {
-			var idBase;
-
-			idBase = module.getWidgetPartialIdBase( args.partial );
-			if ( ! idBase ) {
-				return;
-			}
-
-			// @todo The following could be organized better.
-			if ( 'twitter_timeline' === idBase ) {
-				(function() {
-					var hasWidgetIdSupplied = false, dependency;
-
-					args.newContainer.find( '.twitter-timeline[data-widget-id]' ).each( function() {
-						if ( $( this ).data( 'widgetId' ) ) {
-							hasWidgetIdSupplied = true;
-						}
-					} );
-					if ( hasWidgetIdSupplied ) {
-						dependency = {
-							handle: 'twitter-wjs',
-							src: '//platform.twitter.com/widgets.js',
-							test: function() {
-								return 'undefined' !== typeof twttr && twttr.widgets && twttr.widgets.load;
-							}
-						};
-						self.loadScript( dependency ).done(function() {
-							twttr.widgets.load( args.newContainer[0] );
-						});
-					}
-				})();
-			} else if ( 'widget_contact_info' === idBase ) {
-				(function() {
-					var hasContactMap = false;
-					if ( args.newContainer.find( '.contact-map' ).length ) {
-						hasContactMap = true;
-					}
-					if ( hasContactMap ) {
-						if ( $( 'link#contact-info-map-css-css' ).length < 1 ) {
-							$( 'head:first' ).append( $( '<link>', {
-								id: 'contact-info-map-css-css', // The doubled 'css' is intentional.
-								rel: 'stylesheet',
-								href: config.styles['contact-info-map-css'].src,
-								type: 'text/css'
-							} ) );
-						}
-
-						self.loadScript({
-							handle: 'google-maps',
-							src: config.scripts['google-maps'].src,
-							test: function() {
-								return 'undefined' !== typeof google && 'undefined' !== typeof google.maps;
-							}
-						}).done( function() {
-
-							// The logic in this script has to be loaded anew each time.
-							$.getScript( config.scripts['contact-info-map-js'].src );
-						} );
-					}
-				})();
+			var idBase = module.getWidgetPartialIdBase( args.partial );
+			if ( idBase && module.widgetRenderHandlers[ idBase ] ) {
+				module.widgetRenderHandlers[ idBase ]( args );
 			}
 		} );
 
