@@ -1,4 +1,4 @@
-/* global jQuery, JSON, _customizePartialRefreshExports */
+/* global jQuery, JSON, _customizePartialRefreshExports, console */
 wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	'use strict';
 
@@ -464,6 +464,13 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				} );
 
 				request.done( function( data ) {
+
+					// Relay errors (warnings) captured during rendering and relay to console.
+					if ( data.errors && 'undefined' !== typeof console && console.warn ) {
+						_.each( data.errors, function( error ) {
+							console.warn( error );
+						} );
+					}
 
 					/*
 					 * Note that data is an array of items that correspond to the array of
