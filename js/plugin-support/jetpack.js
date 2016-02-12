@@ -62,11 +62,12 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 * Get the widget ID base for a given partial.
 		 *
 		 * @param {wp.customize.Partial} partial
+		 * @param {string}               partial.widgetId
 		 * @returns {string|null}
 		 */
 		module.getWidgetPartialIdBase = function( partial ) {
 			var matches;
-			if ( ! partial.widgetId ) {
+			if ( ! partial.widgetId || ! partial.extended( api.widgetsPreview.WidgetInstancePartial ) ) {
 				return null;
 			}
 			matches = partial.widgetId.match( /^(.+?)(-\d+)?$/ );
@@ -153,10 +154,10 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 *
 		 * @param {object}               args
 		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object}        args.content
+		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
 		 * @param {object}               args.context
 		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery}               args.oldContainer
+		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
 		 */
 		api.bind( 'partial-content-rendered', function( args ) {
 			var idBase = module.getWidgetPartialIdBase( args.partial );
@@ -199,18 +200,15 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 *
 		 * @param {object}               args
 		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object}        args.content
+		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
 		 * @param {object}               args.context
 		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery}               args.oldContainer
+		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
 		 */
 		api.bind( 'partial-content-rendered', function( args ) {
 
 			// Trigger Jetpack Infinite Scroll's post-load event so ME.js and other dynamic elements can be rebuilt.
-			if ( _.isString( args.content ) ) {
-				$( document.body ).trigger( 'post-load', { html: args.content } );
-			}
-
+			$( document.body ).trigger( 'post-load', { html: _.isString( args.content ) ? args.content : args.newContainer.html() } );
 		} );
 
 		// Add partials when new posts are added for infinite scroll.
