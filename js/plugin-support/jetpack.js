@@ -1,4 +1,4 @@
-/* global twttr, google, FB, _customizeSelectiveRefreshJetpackExports */
+/* global twttr, google, infiniteScroll, FB, _customizeSelectiveRefreshJetpackExports */
 /* exported customizeSelectiveRefreshJetpackModuleSupport */
 
 /**
@@ -190,7 +190,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 	 */
 	moduleSupport.infiniteScroll = function( config ) {
 
-		if ( ! config.themeSupport ) {
+		if ( ! config.themeSupport || 'undefined' === typeof infiniteScroll ) {
 			return;
 		}
 
@@ -215,8 +215,12 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 
 		// Add partials when new posts are added for infinite scroll.
 		$( document.body ).on( 'post-load', function( e, response ) {
+			var rootElement = null;
 			if ( response.html && -1 !== response.html.indexOf( 'data-customize-partial' ) ) {
-				api.selectiveRefreshPreview.addPartials();
+				if ( infiniteScroll.settings.id ) {
+					rootElement = $( '#' + infiniteScroll.settings.id );
+				}
+				api.selectiveRefreshPreview.addPartials( rootElement );
 			}
 		} );
 	};
