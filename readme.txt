@@ -70,6 +70,10 @@ continue on their way browsing the site.
 
 == Changelog ==
 
+= 0.5.3 =
+* Capture errors triggered during partial rendering, preventing them from displaying inline which can cause the containers to be corrupted and break subsequent updates.  If `WP_DEBUG_DISPLAY` is enabled, the errors will be added to the console as warnings.
+* Also add initial support for Jetpack's Facebook Page widget.
+
 = 0.5.2 =
 * Fix position of widget in sidebar if a `widget_instance` partial container is inserted prior to an refresh.
 * Only sort the DOM if the order has changed, to improve performance.
