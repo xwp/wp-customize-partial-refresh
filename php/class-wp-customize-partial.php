@@ -222,7 +222,7 @@ class WP_Customize_Partial {
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
-		$rendered = apply_filters( 'customize_setting_render', $rendered, $partial, $container_context );
+		$rendered = apply_filters( 'customize_partial_render', $rendered, $partial, $container_context );
 
 		/**
 		 * Filter partial rendering by the partial ID.
@@ -233,7 +233,7 @@ class WP_Customize_Partial {
 		 * @param WP_Customize_Partial $partial           WP_Customize_Setting instance.
 		 * @param array                $container_context Optional array of context data associated with the target container.
 		 */
-		$rendered = apply_filters( "customize_setting_render_{$partial->id}", $rendered, $partial, $container_context );
+		$rendered = apply_filters( "customize_partial_render_{$partial->id}", $rendered, $partial, $container_context );
 
 		return $rendered;
 	}
