@@ -534,7 +534,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	self.addPartials = function( rootElement, options ) {
 		var containerElements;
 		if ( ! rootElement ) {
-			rootElement = document.body;
+			rootElement = document.documentElement;
 		}
 		rootElement = $( rootElement );
 		options = _.extend(
@@ -657,7 +657,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		} );
 
 		// Add (dynamic) initial partials that are declared via data-* attributes.
-		self.addPartials( document.body, {
+		self.addPartials( document.documentElement, {
 			triggerRendered: false
 		} );
 
@@ -668,7 +668,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 					self.addPartials( $( mutation.target ) );
 				} );
 			} );
-			self.mutationObserver.observe( document.body, {
+			self.mutationObserver.observe( document.documentElement, {
 				childList: true,
 				subtree: true
 			} );
