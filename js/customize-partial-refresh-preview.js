@@ -256,7 +256,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			}
 
 			content = container.content;
-			if ( wp.emoji && wp.emoji.parse ) {
+			if ( wp.emoji && wp.emoji.parse && ! $.contains( document.head, container.element[0] ) ) {
 				content = wp.emoji.parse( content );
 			}
 
@@ -587,6 +587,11 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 
 	api.bind( 'preview-ready', function() {
 		var handleSettingChange, watchSettingChange, unwatchSettingChange;
+
+		// Polyfill for IE8 to support the document.head attribute.
+		if ( ! document.head ) {
+			document.head = $( 'head:first' )[0];
+		}
 
 		_.extend( self.data, _customizePartialRefreshExports );
 
