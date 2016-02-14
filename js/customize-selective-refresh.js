@@ -246,7 +246,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
 		renderContent: function( placement ) {
-			var partial = this, context, content, newContainerElement;
+			var partial = this, content, newContainerElement;
 			if ( ! placement.container ) {
 				partial.fallback( new Error( 'no_container' ), [ placement ] );
 				return false;
@@ -275,14 +275,11 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 				newContainerElement = $( content );
 
 				// Merge the new context on top of the old context.
-				context = _.extend(
-					{},
-					placement.container.data( 'customize-partial-placement-context' ) || {},
+				placement.context = _.extend(
+					placement.context,
 					newContainerElement.data( 'customize-partial-placement-context' ) || {}
 				);
-				if ( ! _.isEmpty( context ) ) {
-					newContainerElement.data( 'customize-partial-placement-context', context );
-				}
+				newContainerElement.data( 'customize-partial-placement-context', placement.context );
 
 				placement.removedNodes = placement.container;
 				placement.container = newContainerElement;
@@ -294,12 +291,10 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 					placement.removedNodes.appendChild( placement.container[0].firstChild );
 				}
 
-				newContainerElement = placement.container;
 				placement.container.html( content );
 			}
 
 			placement.container.removeClass( 'customize-partial-refreshing' );
-			placement.container.data( 'customize-partial-content-rendered', true );
 
 			/*
 			 * Trigger an event so that dynamic elements can be re-built.
@@ -307,12 +302,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			 * Ideally Core should add support for automatically initializing MediaElement.js elements on subtree modifications.
 			 * See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
 			 */
-			api.trigger( 'partial-content-rendered', _.extend( placement, {
-				partial: partial,
-				contextData: placement.context,
-				newContainer: newContainerElement,
-				addedContent: content
-			} ) );
+			placement.container.data( 'customize-partial-content-rendered', true );
+			api.trigger( 'partial-content-rendered', placement );
 			return true;
 		},
 
@@ -429,7 +420,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * @param {Node}                     [args.endNode]
 		 * @param {object}                   [args.context]
 		 * @param {string}                   [args.addedContent]
-		 * @param {Element|DocumentFragment} [args.removedNodes]
+		 * @param {jQuery|DocumentFragment}  [args.removedNodes]
 		 * @param {number}                   [args.instanceNumber] @todo this should be part of context
 		 */
 		initialize: function( args ) {
@@ -817,15 +808,12 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {object}               args
-		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
-		 * @param {object}               args.context
-		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
+		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( args ) {
-			self.addPartials( args.newContainer );
+		api.bind( 'partial-content-rendered', function( placement ) {
+			if ( placement.container ) {
+				self.addPartials( placement.container );
+			}
 		} );
 
 		api.preview.bind( 'active', function() {
