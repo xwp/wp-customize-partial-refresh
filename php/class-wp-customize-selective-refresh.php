@@ -237,6 +237,7 @@ class WP_Customize_Selective_Refresh {
 	public function init_preview() {
 		add_action( 'template_redirect', array( $this, 'handle_render_partials_request' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_theme_plugin_support_scripts' ), 11 );
 	}
 
 	/**
@@ -257,7 +258,15 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function enqueue_preview_scripts() {
 		wp_enqueue_script( 'customize-selective-refresh' );
+		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
+	}
 
+	/**
+	 * Enqueue scripts to add support for specific themes and plugins.
+	 *
+	 * This is not relevant to #coremerge.
+	 */
+	public function enqueue_preview_theme_plugin_support_scripts() {
 		/*
 		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
 		 * The Jetpack Infinite Scroll handles this when a post-load event is triggered.
@@ -312,7 +321,6 @@ class WP_Customize_Selective_Refresh {
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 		}
 
-		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
 	}
 
 	/**
