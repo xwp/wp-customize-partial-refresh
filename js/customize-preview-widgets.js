@@ -332,8 +332,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 *
 		 * @since 4.5.0
 		 *
-		 * @todo This is an expensive operation. Optimize.
-		 *
 		 * @param {string} widgetId
 		 * @returns {wp.customize.Partial} Widget instance partial.
 		 */
@@ -349,48 +347,37 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 			// Make sure that there is a container element for the widget in the sidebar, if at least a placeholder.
 			_.each( sidebarPartial.placements(), function( widgetAreaPlacement ) {
-				var widgetContainerElement;
+				var foundWidgetPlacement, widgetContainerElement;
 
-				// @todo Why are we doing this? We can just look for the placement that has a matching instanceNumber and sidebarId, right?
-				_.each( widgetPartial.placements(), function( widgetInstancePlacement ) {
-					var elementNode, isBounded;
-					if ( ! widgetInstancePlacement.container ) {
-						return;
-					}
-					elementNode = widgetInstancePlacement.container[0];
-					isBounded = (
-						( widgetAreaPlacement.startNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_FOLLOWING ) &&
-						( widgetAreaPlacement.endNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_PRECEDING )
-					);
-					if ( isBounded ) {
-						widgetContainerElement = widgetInstancePlacement.container;
-					}
+				foundWidgetPlacement = _.find( widgetPartial.placements(), function( widgetInstancePlacement ) {
+					return ( widgetInstancePlacement.context.sidebar_instance_number === widgetAreaPlacement.context.instanceNumber );
+				} );
+				if ( foundWidgetPlacement ) {
+					return;
+				}
+
+				widgetContainerElement = $(
+					sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
+					sidebarPartial.params.sidebarArgs.after_widget
+				);
+
+				widgetContainerElement.attr( 'data-customize-partial-id', widgetPartial.id );
+				widgetContainerElement.attr( 'data-customize-partial-type', 'widget_instance' );
+				widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
+
+				/*
+				 * Make sure the widget container element has the customize-container context data.
+				 * The sidebar_instance_number is used to disambiguate multiple instances of the
+				 * same sidebar are rendered onto the template, and so the same widget is embedded
+				 * multiple times.
+				 */
+				widgetContainerElement.data( 'customize-partial-placement-context', {
+					'sidebar_id': sidebarPartial.sidebarId,
+					'sidebar_instance_number': widgetAreaPlacement.context.instanceNumber
 				} );
 
-				if ( ! widgetContainerElement ) {
-					widgetContainerElement = $(
-						sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
-						sidebarPartial.params.sidebarArgs.after_widget
-					);
-
-					widgetContainerElement.attr( 'data-customize-partial-id', widgetPartial.id );
-					widgetContainerElement.attr( 'data-customize-partial-type', 'widget_instance' );
-					widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
-
-					/*
-					 * Make sure the widget container element has the customize-container context data.
-					 * The sidebar_instance_number is used to disambiguate multiple instances of the
-					 * same sidebar are rendered onto the template, and so the same widget is embedded
-					 * multiple times.
-					 */
-					widgetContainerElement.data( 'customize-partial-placement-context', {
-						'sidebar_id': sidebarPartial.sidebarId,
-						'sidebar_instance_number': widgetAreaPlacement.context.instanceNumber
-					} );
-
-					widgetAreaPlacement.endNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaPlacement.endNode );
-					wasInserted = true;
-				}
+				widgetAreaPlacement.endNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaPlacement.endNode );
+				wasInserted = true;
 			} );
 
 			if ( wasInserted ) {
