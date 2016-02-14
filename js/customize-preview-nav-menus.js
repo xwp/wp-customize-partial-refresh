@@ -109,7 +109,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * Render content.
 		 *
 		 * @inheritdoc
-		 * @param {wp.customize.selectiveRefreshPreview.Placement} placement
+		 * @param {wp.customize.selectiveRefresh.Placement} placement
 		 */
 		renderContent: function( placement ) {
 			var partial = this, previousContainer = placement.container;
@@ -180,7 +180,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			} );
 
 			if ( ! themeLocationPartialFound ) {
-				api.selectiveRefreshPreview.requestFullRefresh();
+				api.selectiveRefresh.requestFullRefresh();
 			}
 		} );
 	};

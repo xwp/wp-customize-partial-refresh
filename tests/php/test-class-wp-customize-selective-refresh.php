@@ -73,9 +73,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	function test_register_scripts() {
 		$scripts = new WP_Scripts();
 		$handles = array(
-			'customize-partial-refresh-pane',
+			'customize-controls-hacks',
 			'customize-widgets-hacks',
-			'customize-partial-refresh-preview',
+			'customize-selective-refresh',
 			'customize-preview-nav-menus',
 			'customize-preview-widgets',
 		);
@@ -147,9 +147,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_enqueue_pane_scripts() {
 		$scripts = wp_scripts();
-		$this->assertNotContains( 'customize-partial-refresh-pane', $scripts->queue );
+		$this->assertNotContains( 'customize-controls-hacks', $scripts->queue );
 		$this->selective_refresh->enqueue_pane_scripts();
-		$this->assertContains( 'customize-partial-refresh-pane', $scripts->queue );
+		$this->assertContains( 'customize-controls-hacks', $scripts->queue );
 	}
 
 	/**
@@ -159,9 +159,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_enqueue_preview_scripts() {
 		$scripts = wp_scripts();
-		$this->assertNotContains( 'customize-partial-refresh-preview', $scripts->queue );
+		$this->assertNotContains( 'customize-selective-refresh', $scripts->queue );
 		$this->selective_refresh->enqueue_preview_scripts();
-		$this->assertContains( 'customize-partial-refresh-preview', $scripts->queue );
+		$this->assertContains( 'customize-selective-refresh', $scripts->queue );
 		$this->assertEquals( 1000, has_action( 'wp_footer', array( $this->selective_refresh, 'export_preview_data' ) ) );
 	}
 

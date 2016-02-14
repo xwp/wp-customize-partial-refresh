@@ -152,7 +152,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {api.selectiveRefreshPreview.Placement} placement
+		 * @param {api.selectiveRefresh.Placement} placement
 		 */
 		api.bind( 'partial-content-rendered', function( placement ) {
 			var idBase = module.getWidgetPartialIdBase( placement.partial );
@@ -164,7 +164,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Handle moving of partials (normally widgets).
 		 *
-		 * @param {api.selectiveRefreshPreview.Placement} placement
+		 * @param {api.selectiveRefresh.Placement} placement
 		 */
 		api.bind( 'partial-content-moved', function( placement ) {
 
@@ -190,7 +190,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {api.selectiveRefreshPreview.Placement} placement
+		 * @param {api.selectiveRefresh.Placement} placement
 		 */
 		api.bind( 'partial-content-rendered', function( placement ) {
 			var content = '';
@@ -221,7 +221,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 				if ( infiniteScroll.settings.id ) {
 					rootElement = $( '#' + infiniteScroll.settings.id );
 				}
-				api.selectiveRefreshPreview.addPartials( rootElement );
+				api.selectiveRefresh.addPartials( rootElement );
 			}
 		} );
 	};

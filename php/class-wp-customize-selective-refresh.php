@@ -101,8 +101,8 @@ class WP_Customize_Selective_Refresh {
 	 * @param WP_Scripts $wp_scripts Scripts.
 	 */
 	function register_scripts( $wp_scripts ) {
-		$handle = 'customize-partial-refresh-pane';
-		$src = $this->dir_url . 'js/customize-partial-refresh-pane.js';
+		$handle = 'customize-controls-hacks';
+		$src = $this->dir_url . 'js/customize-controls-hacks.js';
 		$deps = array( 'customize-controls', 'jquery', 'wp-util' );
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
@@ -113,22 +113,22 @@ class WP_Customize_Selective_Refresh {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
-		$handle = 'customize-partial-refresh-preview';
-		$src = $this->dir_url . 'js/customize-partial-refresh-preview.js';
+		$handle = 'customize-selective-refresh';
+		$src = $this->dir_url . 'js/customize-selective-refresh.js';
 		$deps = array( 'customize-preview', 'wp-util' );
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
 		$handle = 'customize-preview-nav-menus';
 		$src = $this->dir_url . 'js/customize-preview-nav-menus.js';
-		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$deps = array( 'customize-preview', 'customize-selective-refresh' );
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
 		$handle = 'customize-preview-widgets';
 		$src = $this->dir_url . 'js/customize-preview-widgets.js';
-		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$deps = array( 'customize-preview', 'customize-selective-refresh' );
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
@@ -246,7 +246,7 @@ class WP_Customize_Selective_Refresh {
 	 * @access public
 	 */
 	public function enqueue_pane_scripts() {
-		wp_enqueue_script( 'customize-partial-refresh-pane' );
+		wp_enqueue_script( 'customize-controls-hacks' );
 	}
 
 	/**
@@ -256,7 +256,7 @@ class WP_Customize_Selective_Refresh {
 	 * @access public
 	 */
 	public function enqueue_preview_scripts() {
-		wp_enqueue_script( 'customize-partial-refresh-preview' );
+		wp_enqueue_script( 'customize-selective-refresh' );
 
 		/*
 		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
@@ -269,7 +269,7 @@ class WP_Customize_Selective_Refresh {
 			$exports = array();
 			$handle = 'customize-partial-jetpack-support';
 			$src = $this->dir_url . 'js/plugin-support/jetpack.js';
-			$deps = array( 'customize-partial-refresh-preview' );
+			$deps = array( 'customize-selective-refresh' );
 			$in_footer = true;
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 
@@ -307,7 +307,7 @@ class WP_Customize_Selective_Refresh {
 		if ( 'twentythirteen' === get_stylesheet() || 'twentythirteen' === get_template() ) {
 			$handle = 'customize-partial-twentythirteen-support';
 			$src = $this->dir_url . 'js/theme-support/twentythirteen.js';
-			$deps = array( 'customize-partial-refresh-preview' );
+			$deps = array( 'customize-selective-refresh' );
 			$in_footer = true;
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 		}

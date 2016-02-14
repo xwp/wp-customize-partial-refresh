@@ -81,7 +81,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * Send widget-updated message to parent so spinner will get removed from widget control.
 		 *
 		 * @inheritdoc
-		 * @param {wp.customize.selectiveRefreshPreview.Placement} placement
+		 * @param {wp.customize.selectiveRefresh.Placement} placement
 		 */
 		renderContent: function( placement ) {
 			var partial = this;
@@ -238,7 +238,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		placements: function() {
 			var partial = this;
 			return _.map( partial.findDynamicSidebarBoundaryNodes(), function( boundaryNodes ) {
-				return new api.selectiveRefreshPreview.Placement( {
+				return new api.selectiveRefresh.Placement( {
 					partial: partial,
 					container: null,
 					startNode: boundaryNodes.before,
@@ -277,7 +277,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 *
 		 * @since 4.5.0
 		 *
-		 * @return {Array.<wp.customize.selectiveRefreshPreview.Placement>} List of placements that were reflowed.
+		 * @return {Array.<wp.customize.selectiveRefresh.Placement>} List of placements that were reflowed.
 		 */
 		reflowWidgets: function() {
 			var sidebarPartial = this, sidebarPlacements, widgetIds, widgetPartials, sortedSidebarContainers = [];

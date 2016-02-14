@@ -1,8 +1,6 @@
 /* global jQuery, JSON, _customizePartialRefreshExports, console */
 
-// @todo Rename this file to customize-preview-selective-refresh.js
-// @todo Rename selectiveRefreshPreview to selectiveRefresh?
-wp.customize.selectiveRefreshPreview = ( function( $, api ) {
+wp.customize.selectiveRefresh = ( function( $, api ) {
 	'use strict';
 	var self, Partial, Placement;
 
