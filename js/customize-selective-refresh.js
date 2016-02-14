@@ -616,6 +616,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 						}
 					} );
 					self._pendingPartialRequests = {};
+
+					// @todo api.trigger( 'partials-rendered-response', data );
 				} );
 
 				request.fail( function( data, statusText ) {

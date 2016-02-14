@@ -19,13 +19,11 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	/**
 	 * Partial representing an invocation of wp_nav_menu().
 	 *
-	 * @todo Rename this to NavMenuInstancePartial
-	 *
 	 * @class
 	 * @augments wp.customize.Partial
 	 * @since 4.5.0
 	 */
-	self.NavMenuPlacementPartial = api.Partial.extend({
+	self.NavMenuInstancePartial = api.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -42,9 +40,9 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches, argsHmac;
-			matches = id.match( /^nav_menu_placement\[([0-9a-f]{32})]$/ ); // @todo Rename this to nav_menu_instance.
+			matches = id.match( /^nav_menu_instance\[([0-9a-f]{32})]$/ );
 			if ( ! matches ) {
-				throw new Error( 'Illegal id for nav_menu_placement partial. The key corresponds with the args HMAC.' );
+				throw new Error( 'Illegal id for nav_menu_instance partial. The key corresponds with the args HMAC.' );
 			}
 			argsHmac = matches[1];
 
@@ -127,7 +125,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		}
 	});
 
-	api.partialConstructor.nav_menu_placement = self.NavMenuPlacementPartial;
+	api.partialConstructor.nav_menu_instance = self.NavMenuInstancePartial;
 
 	/**
 	 * Connect nav menu items with their corresponding controls in the pane.
@@ -173,7 +171,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 			}
 			themeLocation = matches[1];
 			api.partial.each( function( partial ) {
-				if ( partial.extended( self.NavMenuPlacementPartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
+				if ( partial.extended( self.NavMenuInstancePartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
 					partial.refresh();
 					themeLocationPartialFound = true;
 				}

@@ -69,14 +69,14 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 	public function customize_dynamic_partial_args( $partial_args, $partial_id ) {
 
-		if ( preg_match( '/^nav_menu_placement\[[0-9a-f]{32}\]$/', $partial_id ) ) {
+		if ( preg_match( '/^nav_menu_instance\[[0-9a-f]{32}\]$/', $partial_id ) ) {
 			if ( false === $partial_args ) {
 				$partial_args = array();
 			}
 			$partial_args = array_merge(
 				$partial_args,
 				array(
-					'type' => 'nav_menu_placement',
+					'type' => 'nav_menu_instance',
 					'render_callback' => array( $this, 'render_nav_menu_partial' ),
 					'container_inclusive' => true,
 				)
@@ -162,8 +162,8 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 	public function filter_wp_nav_menu( $nav_menu_content, $args ) {
 		if ( ! empty( $args->customize_preview_nav_menus_args ) ) {
-			$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'nav_menu_placement[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ) );
-			$attributes .= ' data-customize-partial-type="nav_menu_placement"';
+			$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'nav_menu_instance[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ) );
+			$attributes .= ' data-customize-partial-type="nav_menu_instance"';
 			$attributes .= sprintf( ' data-customize-partial-placement-context="%s"', esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) ) );
 			$nav_menu_content = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $nav_menu_content, 1 );
 		}
