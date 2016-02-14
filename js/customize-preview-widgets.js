@@ -87,7 +87,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			var partial = this;
 			if ( api.Partial.prototype.renderContent.call( partial, placement ) ) {
 				api.preview.send( 'widget-updated', partial.widgetId );
-				api.trigger( 'widget-updated', partial.widgetId, placement );
+				api.trigger( 'widget-updated', partial );
 			}
 		}
 	});
@@ -157,9 +157,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), placement.partial.widgetId ) )
 				);
 				if ( isAssignedWidgetPartial ) {
-
-					// @todo Is this the right event?
-					api.trigger( 'sidebar-updated', sidebarPartial.sidebarId, sidebarPartial );
+					api.trigger( 'sidebar-updated', sidebarPartial );
 				}
 			} );
 
@@ -323,7 +321,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			} );
 
 			if ( sortedSidebarContainers.length > 0 ) {
-				api.trigger( 'sidebar-updated', sidebarPartial.sidebarId );
+				api.trigger( 'sidebar-updated', sidebarPartial );
 			}
 
 			return sortedSidebarContainers;
@@ -450,7 +448,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				widgetPartial.refresh();
 			} );
 
-			api.trigger( 'sidebar-updated', sidebarPartial.sidebarId );
+			api.trigger( 'sidebar-updated', sidebarPartial );
 		},
 
 		/**

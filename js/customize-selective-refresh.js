@@ -36,6 +36,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 * @param {array}  options.params.settings         The IDs for the settings the partial relates to.
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
 	 * @param {bool}   options.params.fallbackRefresh  Whether to refresh the entire preview in case of a partial refresh failure.
+	 *
+	 * @todo Partial should be added to self instead of api namespace.
 	 */
 	Partial = api.Partial = api.Class.extend({
 
@@ -446,9 +448,11 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 * @since 4.5.0
 	 *
 	 * @type {Object.<string, wp.customize.Partial>}
+	 * @todo partialConstructor should be added to self instead of api namespace?
 	 */
 	api.partialConstructor = {};
 
+	// @todo Partial should be added to self instead of api namespace?
 	api.partial = new api.Values({ defaultConstructor: Partial });
 
 	/**
