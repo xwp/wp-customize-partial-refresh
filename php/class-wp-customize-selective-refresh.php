@@ -369,11 +369,11 @@ class WP_Customize_Selective_Refresh {
 			 *
 			 * For a dynamic partial to be registered, this filter must be employed
 			 * to override the default false value with an array of args to pass to
-			 * the WP_Customize_Setting constructor.
+			 * the WP_Customize_Partial constructor.
 			 *
 			 * @since 4.5.0
 			 *
-			 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
+			 * @param false|array $partial_args The arguments to the WP_Customize_Partial constructor.
 			 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
 			 */
 			$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
@@ -382,13 +382,13 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			/**
-			 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
+			 * Allow non-statically created partials to be constructed with custom WP_Customize_Partial subclass.
 			 *
 			 * @since 4.5.0
 			 *
-			 * @param string $partial_class WP_Customize_Setting or a subclass.
-			 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
-			 * @param array  $partial_args  WP_Customize_Setting or a subclass.
+			 * @param string $partial_class WP_Customize_Partial or a subclass.
+			 * @param string $partial_id    ID for dynamic partial.
+			 * @param array  $partial_args  The arguments to the WP_Customize_Partial constructor.
 			 */
 			$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
 
@@ -459,7 +459,7 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
-	 * Handle Ajax request to return the settings partial value.
+	 * Handle Ajax request to return the rendered partials for the requested placements.
 	 *
 	 * @since 4.5.0
 	 * @access public
