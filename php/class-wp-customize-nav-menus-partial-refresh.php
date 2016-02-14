@@ -59,7 +59,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 	 */
 
 	/**
-	 * Filter args for nav_menu partials.
+	 * Filter args for dynamic nav_menu partials.
 	 *
 	 * @since 4.5.0
 	 *

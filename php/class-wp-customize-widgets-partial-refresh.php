@@ -55,7 +55,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	}
 
 	/**
-	 * Filter args for nav_menu partials.
+	 * Filter args for dynamic widget partials.
 	 *
 	 * @since 4.5.0
 	 *
@@ -190,7 +190,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	/**
 	 * List of the tag names seen for before_widget strings.
 	 *
-	 * This is used in the filter_wp_kses_allowed_html filter to ebsure that the
+	 * This is used in the filter_wp_kses_allowed_html filter to ensure that the
 	 * data-* attributes can be whitelisted.
 	 *
 	 * @since 4.5.0
