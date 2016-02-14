@@ -233,8 +233,9 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					container: null,
 					startNode: boundaryNodes.before,
 					endNode: boundaryNodes.after,
-					context: partial.params.sidebarArgs,
-					instanceNumber: boundaryNodes.instanceNumber // @todo Let this be part of the context?
+					context: {
+						instanceNumber: boundaryNodes.instanceNumber
+					}
 				} );
 			} );
 		},
@@ -289,8 +290,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				_.each( widgetPartials, function( widgetPartial ) {
 					_.each( widgetPartial.placements(), function( widgetPlacement ) {
 
-						// @todo Let sidebarPlacement.instanceNumber be part of context.
-						if ( sidebarPlacement.instanceNumber === widgetPlacement.context.sidebar_instance_number ) {
+						if ( sidebarPlacement.context.instanceNumber === widgetPlacement.context.sidebar_instance_number ) {
 							thisPosition = widgetPlacement.container.index();
 							sidebarWidgets.push( {
 								partial: widgetPartial,
@@ -385,7 +385,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					 */
 					widgetContainerElement.data( 'customize-partial-placement-context', {
 						'sidebar_id': sidebarPartial.sidebarId,
-						'sidebar_instance_number': widgetAreaPlacement.instanceNumber
+						'sidebar_instance_number': widgetAreaPlacement.context.instanceNumber
 					} );
 
 					widgetAreaPlacement.endNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaPlacement.endNode );

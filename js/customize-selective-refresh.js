@@ -402,15 +402,6 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		removedNodes: null,
 
 		/**
-		 * Optional number to help disambiguate two different containers for the same partial.
-		 *
-		 * @todo Why not let this be part of the context?
-		 *
-		 * @param {number}
-		 */
-		instanceNumber: null,
-
-		/**
 		 * Constructor.
 		 *
 		 * @since 4.5.0
@@ -423,7 +414,6 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * @param {object}                   [args.context]
 		 * @param {string}                   [args.addedContent]
 		 * @param {jQuery|DocumentFragment}  [args.removedNodes]
-		 * @param {number}                   [args.instanceNumber] @todo this should be part of context
 		 */
 		initialize: function( args ) {
 			var placement = this;
