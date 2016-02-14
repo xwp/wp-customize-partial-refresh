@@ -276,12 +276,12 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 			widgetPartials = {};
 			_.each( widgetIds, function( widgetId ) {
-
-				// @todo This should only get the containers, not create them.
-				widgetPartials[ widgetId ] = sidebarPartial.ensureWidgetInstanceContainers( widgetId );
+				var widgetPartial = api.partial( 'widget_instance[' + widgetId + ']' );
+				if ( widgetPartial ) {
+					widgetPartials[ widgetId ] = widgetPartial;
+				}
 			} );
 
-			// Ensure that there are containers for all of the widgets, and that the order is correct.
 			_.each( sidebarPlacements, function( sidebarPlacement ) {
 				var sidebarWidgets = [], needsSort = false, thisPosition, lastPosition = -1;
 
@@ -496,13 +496,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				} );
 				api.partial.add( partial.id, partial );
 			}
-
-			// Ensure there are partials created for each widget in the sidebar.
-			api( 'sidebars_widgets[' + registeredSidebar.id + ']', function( setting ) {
-				_.each( setting.get(), function( widgetId ) {
-					partial.ensureWidgetInstanceContainers( widgetId );
-				} );
-			} );
 		} );
 	};
 
