@@ -164,7 +164,7 @@ class WP_Customize_Nav_Menus_Partial_Refresh {
 		if ( ! empty( $args->customize_preview_nav_menus_args ) ) {
 			$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'nav_menu_placement[' . $args->customize_preview_nav_menus_args['args_hmac'] . ']' ) );
 			$attributes .= ' data-customize-partial-type="nav_menu_placement"';
-			$attributes .= sprintf( ' data-customize-partial-container-context="%s"', esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) ) );
+			$attributes .= sprintf( ' data-customize-partial-placement-context="%s"', esc_attr( wp_json_encode( $args->customize_preview_nav_menus_args ) ) );
 			$nav_menu_content = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $nav_menu_content, 1 );
 		}
 		return $nav_menu_content;

@@ -39,6 +39,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	/**
 	 * Partial representing a widget instance.
 	 *
+	 * @todo Rename this to just WidgetPartial?
+	 *
 	 * @class
 	 * @augments wp.customize.Partial
 	 * @since 4.5.0
@@ -78,21 +80,22 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		/**
 		 * Send widget-updated message to parent so spinner will get removed from widget control.
 		 *
-		 * @todo Fill page refresh should be called by default if the response contains script:not([type]), script[type='text/javascript']?
-		 *
 		 * @inheritdoc
-		 * @param {object} container
+		 * @param {wp.customize.selectiveRefreshPreview.Placement} placement
 		 */
-		renderContent: function( container ) {
+		renderContent: function( placement ) {
 			var partial = this;
-			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
+			if ( api.Partial.prototype.renderContent.call( partial, placement ) ) {
 				api.preview.send( 'widget-updated', partial.widgetId );
+				api.trigger( 'widget-updated', partial.widgetId, placement );
 			}
 		}
 	});
 
 	/**
 	 * Partial representing a widget area.
+	 *
+	 * @todo Rename this to SidebarPartial?
 	 *
 	 * @class
 	 * @augments wp.customize.Partial
@@ -132,9 +135,6 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			if ( partial.params.settings.length > 1 ) {
 				throw new Error( 'Expected WidgetAreaPartial to only have one associated setting' );
 			}
-
-			partial.containerStartBoundaryNode = null;
-			partial.containerEndBoundaryNode = null;
 		},
 
 		/**
@@ -144,10 +144,23 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 */
 		ready: function() {
 			var sidebarPartial = this;
+
+			// Watch for changes to the sidebar_widgets setting.
 			_.each( sidebarPartial.settings(), function( settingId ) {
-				api( settingId, function( setting ) {
-					setting.bind( _.bind( sidebarPartial.handleSettingChange, sidebarPartial ) );
-				} );
+				api( settingId ).bind( _.bind( sidebarPartial.handleSettingChange, sidebarPartial ) );
+			} );
+
+			// Trigger an event for this sidebar being updated whenever a widget inside is rendered.
+			api.bind( 'partial-content-rendered', function( placement ) {
+				var isAssignedWidgetPartial = (
+					placement.partial.extended( self.WidgetInstancePartial ) &&
+					( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), placement.partial.widgetId ) )
+				);
+				if ( isAssignedWidgetPartial ) {
+
+					// @todo Is this the right event?
+					api.trigger( 'sidebar-updated', sidebarPartial.sidebarId, sidebarPartial );
+				}
 			} );
 
 			// Make sure that a widget_instance partial has a container in the DOM prior to a refresh.
@@ -168,7 +181,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 						return;
 					}
 					sidebarWidgetIds = sidebarSetting();
-					if ( _.isArray( sidebarWidgetIds ) && -1 !== _.indexOf( sidebarWidgetIds, widgetId ) ) {
+					if ( _.isArray( sidebarWidgetIds ) /*&& -1 !== _.indexOf( sidebarWidgetIds, widgetId )*/ ) {
 						sidebarPartial.ensureWidgetInstanceContainers( widgetId );
 					}
 				} );
@@ -217,21 +230,22 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		},
 
 		/**
-		 * Get the containers for this partial.
+		 * Get the placements for this partial.
 		 *
 		 * @since 4.5.0
 		 * @returns {Array}
 		 */
-		containers: function() {
+		placements: function() {
 			var partial = this;
 			return _.map( partial.findDynamicSidebarBoundaryNodes(), function( boundaryNodes ) {
-				return {
-					element: null,
-					beforeNode: boundaryNodes.before,
-					afterNode: boundaryNodes.after,
+				return new api.selectiveRefreshPreview.Placement( {
+					partial: partial,
+					container: null,
+					startNode: boundaryNodes.before,
+					endNode: boundaryNodes.after,
 					context: partial.params.sidebarArgs,
-					instanceNumber: boundaryNodes.instanceNumber
-				};
+					instanceNumber: boundaryNodes.instanceNumber // @todo Let this be part of the context?
+				} );
 			} );
 		},
 
@@ -262,29 +276,35 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * Reflow widgets in the sidebar, ensuring they have the proper position in the DOM.
 		 *
 		 * @since 4.5.0
+		 *
+		 * @return {Array.<wp.customize.selectiveRefreshPreview.Placement>} List of placements that were reflowed.
 		 */
 		reflowWidgets: function() {
-			var sidebarPartial = this, sidebarContainers, widgetIds, widgetPartials;
+			var sidebarPartial = this, sidebarPlacements, widgetIds, widgetPartials, sortedSidebarContainers = [];
 			widgetIds = sidebarPartial.getWidgetIds();
-			sidebarContainers = sidebarPartial.containers();
+			sidebarPlacements = sidebarPartial.placements();
 
 			widgetPartials = {};
 			_.each( widgetIds, function( widgetId ) {
+
+				// @todo This should only get the containers, not create them.
 				widgetPartials[ widgetId ] = sidebarPartial.ensureWidgetInstanceContainers( widgetId );
 			} );
 
 			// Ensure that there are containers for all of the widgets, and that the order is correct.
-			_.each( sidebarContainers, function( sidebarContainer ) {
+			_.each( sidebarPlacements, function( sidebarPlacement ) {
 				var sidebarWidgets = [], needsSort = false, thisPosition, lastPosition = -1;
 
 				// Gather list of widget partial containers in this sidebar, and determine if a sort is needed.
 				_.each( widgetPartials, function( widgetPartial ) {
-					_.each( widgetPartial.containers(), function( widgetContainer ) {
-						if ( sidebarContainer.instanceNumber === widgetContainer.context.sidebar_instance_number ) {
-							thisPosition = widgetContainer.element.index();
+					_.each( widgetPartial.placements(), function( widgetPlacement ) {
+
+						// @todo Let sidebarPlacement.instanceNumber be part of context.
+						if ( sidebarPlacement.instanceNumber === widgetPlacement.context.sidebar_instance_number ) {
+							thisPosition = widgetPlacement.container.index();
 							sidebarWidgets.push( {
 								partial: widgetPartial,
-								container: widgetContainer,
+								placement: widgetPlacement,
 								position: thisPosition
 							} );
 							if ( thisPosition < lastPosition ) {
@@ -297,19 +317,24 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 				if ( needsSort ) {
 					_.each( sidebarWidgets, function( sidebarWidget ) {
-						sidebarContainer.afterNode.parentNode.insertBefore(
-							sidebarWidget.container.element[0],
-							sidebarContainer.afterNode
+						sidebarPlacement.endNode.parentNode.insertBefore(
+							sidebarWidget.placement.container[0],
+							sidebarPlacement.endNode
 						);
 
-						api.trigger( 'partial-content-moved', {
-							partial: sidebarWidget.partial,
-							context: sidebarWidget.container.context,
-							container: sidebarWidget.container.element
-						} );
+						// @todo Rename partial-placement-moved?
+						api.trigger( 'partial-content-moved', sidebarWidget.placement );
 					} );
+
+					sortedSidebarContainers.push( sidebarPlacement );
 				}
 			} );
+
+			if ( sortedSidebarContainers.length > 0 ) {
+				api.trigger( 'sidebar-updated', sidebarPartial.sidebarId );
+			}
+
+			return sortedSidebarContainers;
 		},
 
 		/**
@@ -333,20 +358,22 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			}
 
 			// Make sure that there is a container element for the widget in the sidebar, if at least a placeholder.
-			_.each( sidebarPartial.containers(), function( widgetAreaContainer ) {
+			_.each( sidebarPartial.placements(), function( widgetAreaPlacement ) {
 				var widgetContainerElement;
-				_.each( widgetPartial.containers(), function( widgetInstanceContainer ) {
+
+				// @todo Why are we doing this? We can just look for the placement that has a matching instanceNumber and sidebarId, right?
+				_.each( widgetPartial.placements(), function( widgetInstancePlacement ) {
 					var elementNode, isBounded;
-					if ( ! widgetInstanceContainer.element ) {
+					if ( ! widgetInstancePlacement.container ) {
 						return;
 					}
-					elementNode = widgetInstanceContainer.element[0];
+					elementNode = widgetInstancePlacement.container[0];
 					isBounded = (
-						( widgetAreaContainer.beforeNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_FOLLOWING ) &&
-						( widgetAreaContainer.afterNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_PRECEDING )
+						( widgetAreaPlacement.startNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_FOLLOWING ) &&
+						( widgetAreaPlacement.endNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_PRECEDING )
 					);
 					if ( isBounded ) {
-						widgetContainerElement = widgetInstanceContainer.element;
+						widgetContainerElement = widgetInstancePlacement.container;
 					}
 				} );
 
@@ -366,12 +393,12 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 					 * same sidebar are rendered onto the template, and so the same widget is embedded
 					 * multiple times.
 					 */
-					widgetContainerElement.data( 'customize-partial-container-context', {
+					widgetContainerElement.data( 'customize-partial-placement-context', {
 						'sidebar_id': sidebarPartial.sidebarId,
-						'sidebar_instance_number': widgetAreaContainer.instanceNumber
+						'sidebar_instance_number': widgetAreaPlacement.instanceNumber
 					} );
 
-					widgetAreaContainer.afterNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaContainer.afterNode );
+					widgetAreaPlacement.endNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaPlacement.endNode );
 					wasInserted = true;
 				}
 			} );
@@ -408,13 +435,13 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			_.each( widgetsRemoved, function( removedWidgetId ) {
 				var widgetPartial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
 				if ( widgetPartial ) {
-					_.each( widgetPartial.containers(), function( container ) {
+					_.each( widgetPartial.placements(), function( placement ) {
 						var isRemoved = (
-							container.context.sidebar_id === sidebarPartial.sidebarId ||
-							( container.context.sidebar_args && container.context.sidebar_args.id === sidebarPartial.sidebarId )
+							placement.context.sidebar_id === sidebarPartial.sidebarId ||
+							( placement.context.sidebar_args && placement.context.sidebar_args.id === sidebarPartial.sidebarId )
 						);
 						if ( isRemoved ) {
-							container.element.remove();
+							placement.container.remove();
 						}
 					} );
 				}
@@ -427,11 +454,11 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				addedWidgetInstancePartials.push( widgetPartial );
 			} );
 
-			sidebarPartial.reflowWidgets();
-
 			_.each( addedWidgetInstancePartials, function( widgetPartial ) {
 				widgetPartial.refresh();
 			} );
+
+			api.trigger( 'sidebar-updated', sidebarPartial.sidebarId );
 		},
 
 		/**
@@ -446,9 +473,12 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				partial.fallback();
 			} );
 
-			if ( 0 === partial.containers().length ) {
+			if ( 0 === partial.placements().length ) {
 				deferred.reject();
 			} else {
+				_.each( partial.reflowWidgets(), function( sidebarPlacement ) {
+					api.trigger( 'partial-content-rendered', sidebarPlacement );
+				} );
 				deferred.resolve();
 			}
 

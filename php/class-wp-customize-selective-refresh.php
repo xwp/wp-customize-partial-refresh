@@ -257,8 +257,6 @@ class WP_Customize_Selective_Refresh {
 	 */
 	public function enqueue_preview_scripts() {
 		wp_enqueue_script( 'customize-partial-refresh-preview' );
-		$wp_scripts = wp_scripts();
-		$wp_styles = wp_styles();
 
 		/*
 		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
@@ -301,6 +299,17 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			wp_scripts()->add_data( $handle, 'data', sprintf( 'var _customizeSelectiveRefreshJetpackExports = %s;', wp_json_encode( $exports ) ) );
+		}
+
+		/*
+		 * Core theme support.
+		 */
+		if ( 'twentythirteen' === get_stylesheet() || 'twentythirteen' === get_template() ) {
+			$handle = 'customize-partial-twentythirteen-support';
+			$src = $this->dir_url . 'js/theme-support/twentythirteen.js';
+			$deps = array( 'customize-partial-refresh-preview' );
+			$in_footer = true;
+			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 		}
 
 		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
@@ -507,6 +516,8 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			$contents[ $partial_id ] = array();
+
+			// @todo The array should include not only the contents, but also whether the container is included?
 			if ( empty( $container_contexts ) ) {
 				// Since there are no container contexts, render just once.
 				$contents[ $partial_id ][] = $partial->render( null );

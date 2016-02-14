@@ -19,6 +19,8 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	/**
 	 * Partial representing an invocation of wp_nav_menu().
 	 *
+	 * @todo Rename this to NavMenuInstancePartial
+	 *
 	 * @class
 	 * @augments wp.customize.Partial
 	 * @since 4.5.0
@@ -40,7 +42,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches, argsHmac;
-			matches = id.match( /^nav_menu_placement\[([0-9a-f]{32})]$/ );
+			matches = id.match( /^nav_menu_placement\[([0-9a-f]{32})]$/ ); // @todo Rename this to nav_menu_instance.
 			if ( ! matches ) {
 				throw new Error( 'Illegal id for nav_menu_placement partial. The key corresponds with the args HMAC.' );
 			}
@@ -107,19 +109,19 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * Render content.
 		 *
 		 * @inheritdoc
-		 * @param {object} container
+		 * @param {wp.customize.selectiveRefreshPreview.Placement} placement
 		 */
-		renderContent: function( container ) {
-			var partial = this, previousContainer = container.element;
-			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
+		renderContent: function( placement ) {
+			var partial = this, previousContainer = placement.container;
+			if ( api.Partial.prototype.renderContent.call( partial, placement ) ) {
 
 				// Trigger deprecated event.
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
 					instanceNumber: null, // @deprecated
-					wpNavArgs: container.context, // @deprecated
-					wpNavMenuArgs: container.context,
+					wpNavArgs: placement.context, // @deprecated
+					wpNavMenuArgs: placement.context,
 					oldContainer: previousContainer,
-					newContainer: container.element
+					newContainer: placement.container
 				} ] );
 			}
 		}

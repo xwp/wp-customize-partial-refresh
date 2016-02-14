@@ -152,33 +152,25 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {object}               args
-		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
-		 * @param {object}               args.context
-		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
+		 * @param {api.selectiveRefreshPreview.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( args ) {
-			var idBase = module.getWidgetPartialIdBase( args.partial );
+		api.bind( 'partial-content-rendered', function( placement ) {
+			var idBase = module.getWidgetPartialIdBase( placement.partial );
 			if ( idBase && module.widgetRenderHandlers[ idBase ] ) {
-				module.widgetRenderHandlers[ idBase ]( args );
+				module.widgetRenderHandlers[ idBase ]( placement );
 			}
 		} );
 
 		/**
 		 * Handle moving of partials (normally widgets).
 		 *
-		 * @param {object}               args
-		 * @param {wp.customize.Partial} args.partial
-		 * @param {object}               args.context
-		 * @param {jQuery}               args.container
+		 * @param {api.selectiveRefreshPreview.Placement} placement
 		 */
-		api.bind( 'partial-content-moved', function( args ) {
+		api.bind( 'partial-content-moved', function( placement ) {
 
 			// Refresh a partial containing a Twitter timeline iframe, since it has to be re-built.
-			if ( args.container.find( 'iframe.twitter-timeline:not([src]):first' ).length ) {
-				args.partial.refresh();
+			if ( $( placement.container ).find( 'iframe.twitter-timeline:not([src]):first' ).length ) {
+				placement.partial.refresh();
 			}
 		} );
 	};
@@ -198,17 +190,28 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {object}               args
-		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
-		 * @param {object}               args.context
-		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
+		 * @param {api.selectiveRefreshPreview.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( args ) {
+		api.bind( 'partial-content-rendered', function( placement ) {
+			var content = '';
+			if ( _.isString( placement.addedContent ) ) {
+				content = placement.addedContent;
+			} else if ( placement.container ) {
+				content = $( placement.container ).html();
+			} else {
+
+				/*
+				 * Here we could get placement.startNode and placement.endNode
+				 * and create a new Range, and obtain the commonAncestorContainer
+				 * to then get the innerHTML. But it is unlikely that post-load
+				 * would need to be triggered in the context where there was no
+				 * container for the placement.
+				 */
+				return;
+			}
 
 			// Trigger Jetpack Infinite Scroll's post-load event so ME.js and other dynamic elements can be rebuilt.
-			$( document.body ).trigger( 'post-load', { html: _.isString( args.content ) ? args.content : args.newContainer.html() } );
+			$( document.body ).trigger( 'post-load', { html: content } );
 		} );
 
 		// Add partials when new posts are added for infinite scroll.

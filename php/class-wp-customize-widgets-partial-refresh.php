@@ -179,7 +179,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 
 		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget_instance[' . $sidebar_args['widget_id'] . ']' ) );
 		$attributes .= ' data-customize-partial-type="widget_instance"';
-		$attributes .= sprintf( ' data-customize-partial-container-context="%s"', esc_attr( wp_json_encode( $context ) ) );
+		$attributes .= sprintf( ' data-customize-partial-placement-context="%s"', esc_attr( wp_json_encode( $context ) ) );
 		$attributes .= sprintf( ' data-customize-widget-id="%s"', esc_attr( $sidebar_args['widget_id'] ) );
 		$sidebar_args['before_widget'] = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $sidebar_args['before_widget'] );
 
@@ -220,7 +220,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 				array_fill_keys( array(
 					'data-customize-partial-id',
 					'data-customize-partial-type',
-					'data-customize-partial-container-context',
+					'data-customize-partial-placement-context',
 					'data-customize-partial-widget-id',
 					'data-customize-partial-options',
 				), true )
