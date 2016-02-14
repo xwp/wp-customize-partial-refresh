@@ -174,17 +174,9 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				if ( parsedId.number ) {
 					widgetId += '-' + String( parsedId.number );
 				}
-
-				_.each( sidebarPartial.settings(), function( settingId ) {
-					var sidebarSetting = api( settingId ), sidebarWidgetIds;
-					if ( ! sidebarSetting ) {
-						return;
-					}
-					sidebarWidgetIds = sidebarSetting();
-					if ( _.isArray( sidebarWidgetIds ) /*&& -1 !== _.indexOf( sidebarWidgetIds, widgetId )*/ ) {
-						sidebarPartial.ensureWidgetInstanceContainers( widgetId );
-					}
-				} );
+				if ( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), widgetId ) ) {
+					sidebarPartial.ensureWidgetInstanceContainers( widgetId );
+				}
 			} );
 		},
 
