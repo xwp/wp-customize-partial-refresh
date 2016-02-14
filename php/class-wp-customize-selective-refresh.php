@@ -498,16 +498,15 @@ class WP_Customize_Selective_Refresh {
 		/**
 		 * Do setup before rendering each partial.
 		 *
-		 * Plugins may do things like wp_enqueue_scripts() to gather a list of
-		 * the scripts and styles which may get enqueued in the response.
-		 *
-		 * @todo Eventually this should automatically by default do wp_enqueue_scripts(). See below.
+		 * Plugins may do things like call <code>wp_enqueue_scripts()</code> and
+		 * gather a list of the scripts and styles which may get enqueued in the response.
 		 *
 		 * @since 4.5.0
 		 *
-		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to render in the request.
 		 */
-		do_action( 'customize_render_partials_before', $this );
+		do_action( 'customize_render_partials_before', $this, $partials );
 
 		set_error_handler( array( $this, 'handle_error' ), error_reporting() );
 		$contents = array();
@@ -538,6 +537,19 @@ class WP_Customize_Selective_Refresh {
 		$this->current_partial_id = null;
 		restore_error_handler();
 
+		/**
+		 * Do finalization after rendering each partial.
+		 *
+		 * Plugins may do things like call <code>wp_footer()</code> to scrape scripts output and
+		 * return them via the customize_render_partials_response filter.
+		 *
+		 * @since 4.5.0
+		 *
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to rendered in the request.
+		 */
+		do_action( 'customize_render_partials_after', $this, $partials );
+
 		$response = array(
 			'contents' => $contents,
 		);
@@ -548,12 +560,18 @@ class WP_Customize_Selective_Refresh {
 		/**
 		 * Filter the response from rendering the partials.
 		 *
-		 * This is similar to the <code>infinite_scroll_results</code> filter in Jetpack,
-		 * and the <code>The_Neverending_Home_Page::filter_infinite_scroll_results()</code>
-		 * function which will amend the response with scripts and styles that are enqueued
-		 * so that the client can inject these new dependencies into the document.
+		 * Plugins may use this filter to inject <code>$scripts</code> and
+		 * <code>$styles</code> which are dependencies for the partials being
+		 * rendered. The response data will be available to the client via the
+		 * <code>render-partials-response</code> JS event, so the client can then
+		 * inject the scripts and styles into the DOM if they have not already
+		 * been enqueued there. If plugins do this, they'll need to take care
+		 * for any scripts that do <code>document.write()</code> and make sure
+		 * that these are not injected, or else to override the function to no-op,
+		 * or else the page will be destroyed.
 		 *
-		 * @todo This method should eventually go ahead and include the enqueued scripts and styles by default. Beware of any sripts that do document.write().
+		 * Plugins should be aware that <code>$scripts</code> and <code>$styles</code>
+		 * these may eventually be included by default in the response.
 		 *
 		 * @since 4.5.0
 		 *
@@ -563,10 +581,10 @@ class WP_Customize_Selective_Refresh {
 		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
 		 *     @type array [$errors]  List of errors triggered during rendering of partials, if WP_DEBUG_DISPLAY is enabled.
 		 * }
-		 *
-		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to rendered in the request.
 		 */
-		$response = apply_filters( 'customize_render_partials_response', $response, $this );
+		$response = apply_filters( 'customize_render_partials_response', $response, $this, $partials );
 
 		wp_send_json_success( $response );
 	}

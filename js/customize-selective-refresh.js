@@ -298,13 +298,14 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 			placement.container.removeClass( 'customize-partial-refreshing' );
 
-			/*
-			 * Trigger an event so that dynamic elements can be re-built.
-			 *
-			 * Ideally Core should add support for automatically initializing MediaElement.js elements on subtree modifications.
-			 * See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
-			 */
+			// Prevent placement container from being being re-triggered as being rendered among nested partials.
 			placement.container.data( 'customize-partial-content-rendered', true );
+
+			/**
+			 * Announce when a partial's placement has been rendered so that dynamic elements can be re-built.
+			 *
+			 * @todo Should should api.selectiveRefresh implement Events and use it as the message bus instead?
+			 */
 			api.trigger( 'partial-content-rendered', placement );
 			return true;
 		},
@@ -582,6 +583,18 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 				request.done( function( data ) {
 
+					/**
+					 * Announce the data returned from a request to render partials.
+					 *
+					 * The data is filtered on the server via customize_render_partials_response
+					 * so plugins can inject data from the server to be utilized
+					 * on the client via this event. Plugins may use this filter
+					 * to communicate script and style dependencies that need to get
+					 * injected into the page to support the rendered partials.
+					 * This is similar to the 'saved' event.
+					 */
+					api.trigger( 'render-partials-response', data );
+
 					// Relay errors (warnings) captured during rendering and relay to console.
 					if ( data.errors && 'undefined' !== typeof console && console.warn ) {
 						_.each( data.errors, function( error ) {
@@ -616,8 +629,6 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 						}
 					} );
 					self._pendingPartialRequests = {};
-
-					// @todo api.trigger( 'partials-rendered-response', data );
 				} );
 
 				request.fail( function( data, statusText ) {
@@ -697,6 +708,12 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			 * will be triggered for the nested nav menu to do any initialization.
 			 */
 			if ( options.triggerRendered && ! containerElement.data( 'customize-partial-content-rendered' ) ) {
+
+				/**
+				 * Announce when a partial's nested placement has been re-rendered.
+				 *
+				 * @todo Should should api.selectiveRefresh implement Events and use it as the message bus instead?
+				 */
 				api.trigger( 'partial-content-rendered', new Placement( {
 					partial: partial,
 					context: containerContext,
