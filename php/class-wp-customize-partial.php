@@ -138,7 +138,7 @@ class WP_Customize_Partial {
 	 *     @type array|string  $settings        All settings IDs tied to the partial. If undefined, `$id` will be used.
 	 * }
 	 */
-	public function __construct( $component, $id, $args = array() ) {
+	public function __construct( WP_Customize_Selective_Refresh $component, $id, $args = array() ) {
 		$keys = array_keys( get_object_vars( $this ) );
 		foreach ( $keys as $key ) {
 			if ( isset( $args[ $key ] ) ) {
