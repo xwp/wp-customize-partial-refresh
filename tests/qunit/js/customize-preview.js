@@ -1,4 +1,4 @@
-/* global wp */
+/* global wp, test */
 
 jQuery( window ).load( function() {
 
@@ -11,7 +11,7 @@ jQuery( window ).load( function() {
 		equal( api.settings.channel, 'preview-0' );
 	} );
 
-	test( 'Setting has fixture value', function () {
+	test( 'Setting has fixture value', function() {
 		equal( wp.customize( 'fixture-control' ).get(), 'Lorem Ipsum' );
 	} );
 } );
