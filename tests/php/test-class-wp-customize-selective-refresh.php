@@ -61,8 +61,7 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 * @see WP_Customize_Selective_Refresh::__construct()
 	 */
 	function test_construct() {
-		$this->assertEquals( $this->wp_customize, $this->wp_customize->selective_refresh->manager );
-		$this->assertInstanceOf( 'WP_Customize_Manager', $this->wp_customize->selective_refresh->manager );
+		$this->assertEquals( $this->selective_refresh, $this->wp_customize->selective_refresh );
 	}
 
 	/**
@@ -117,7 +116,7 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_crud_partial() {
 		$partial = $this->selective_refresh->add_partial( 'foo' );
-		$this->assertEquals( $this->wp_customize, $partial->manager );
+		$this->assertEquals( $this->selective_refresh, $partial->component );
 		$this->assertInstanceOf( 'WP_Customize_Partial', $partial );
 		$this->assertEquals( $partial, $this->selective_refresh->get_partial( $partial->id ) );
 		$this->assertArrayHasKey( $partial->id, $this->selective_refresh->partials() );
@@ -126,7 +125,7 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 		$this->assertEmpty( $this->selective_refresh->get_partial( $partial->id ) );
 		$this->assertArrayNotHasKey( $partial->id, $this->selective_refresh->partials() );
 
-		$partial = new WP_Customize_Partial( $this->wp_customize, 'bar' );
+		$partial = new WP_Customize_Partial( $this->selective_refresh, 'bar' );
 		$this->assertEquals( $partial, $this->selective_refresh->add_partial( $partial ) );
 		$this->assertEquals( $partial, $this->selective_refresh->get_partial( 'bar' ) );
 		$this->assertEqualSets( array( 'bar' ), array_keys( $this->selective_refresh->partials() ) );

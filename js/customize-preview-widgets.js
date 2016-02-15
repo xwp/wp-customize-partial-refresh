@@ -42,10 +42,10 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	 * @todo Rename this to just WidgetPartial?
 	 *
 	 * @class
-	 * @augments wp.customize.Partial
+	 * @augments wp.customize.selectiveRefresh.Partial
 	 * @since 4.5.0
 	 */
-	self.WidgetInstancePartial = api.Partial.extend({
+	self.WidgetInstancePartial = api.selectiveRefresh.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -74,7 +74,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				options.params || {}
 			);
 
-			api.Partial.prototype.initialize.call( partial, id, options );
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
 		},
 
 		/**
@@ -85,9 +85,9 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 */
 		renderContent: function( placement ) {
 			var partial = this;
-			if ( api.Partial.prototype.renderContent.call( partial, placement ) ) {
+			if ( api.selectiveRefresh.Partial.prototype.renderContent.call( partial, placement ) ) {
 				api.preview.send( 'widget-updated', partial.widgetId );
-				api.trigger( 'widget-updated', partial );
+				api.selectiveRefresh.trigger( 'widget-updated', partial );
 			}
 		}
 	});
@@ -98,10 +98,10 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	 * @todo Rename this to SidebarPartial?
 	 *
 	 * @class
-	 * @augments wp.customize.Partial
+	 * @augments wp.customize.selectiveRefresh.Partial
 	 * @since 4.5.0
 	 */
-	self.WidgetAreaPartial = api.Partial.extend({
+	self.WidgetAreaPartial = api.selectiveRefresh.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -127,7 +127,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				options.params || {}
 			);
 
-			api.Partial.prototype.initialize.call( partial, id, options );
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
 
 			if ( ! partial.params.sidebarArgs ) {
 				throw new Error( 'The sidebarArgs param was not provided.' );
@@ -151,13 +151,13 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			} );
 
 			// Trigger an event for this sidebar being updated whenever a widget inside is rendered.
-			api.bind( 'partial-content-rendered', function( placement ) {
+			api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
 				var isAssignedWidgetPartial = (
 					placement.partial.extended( self.WidgetInstancePartial ) &&
 					( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), placement.partial.widgetId ) )
 				);
 				if ( isAssignedWidgetPartial ) {
-					api.trigger( 'sidebar-updated', sidebarPartial );
+					api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
 				}
 			} );
 
@@ -277,7 +277,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 			widgetPartials = {};
 			_.each( widgetIds, function( widgetId ) {
-				var widgetPartial = api.partial( 'widget_instance[' + widgetId + ']' );
+				var widgetPartial = api.selectiveRefresh.partial( 'widget_instance[' + widgetId + ']' );
 				if ( widgetPartial ) {
 					widgetPartials[ widgetId ] = widgetPartial;
 				}
@@ -313,7 +313,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 						);
 
 						// @todo Rename partial-placement-moved?
-						api.trigger( 'partial-content-moved', sidebarWidget.placement );
+						api.selectiveRefresh.trigger( 'partial-content-moved', sidebarWidget.placement );
 					} );
 
 					sortedSidebarContainers.push( sidebarPlacement );
@@ -321,7 +321,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			} );
 
 			if ( sortedSidebarContainers.length > 0 ) {
-				api.trigger( 'sidebar-updated', sidebarPartial );
+				api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
 			}
 
 			return sortedSidebarContainers;
@@ -333,16 +333,16 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * @since 4.5.0
 		 *
 		 * @param {string} widgetId
-		 * @returns {wp.customize.Partial} Widget instance partial.
+		 * @returns {wp.customize.selectiveRefresh.Partial} Widget instance partial.
 		 */
 		ensureWidgetInstanceContainers: function( widgetId ) {
 			var sidebarPartial = this, widgetPartial, wasInserted = false, partialId = 'widget_instance[' + widgetId + ']';
-			widgetPartial = api.partial( partialId );
+			widgetPartial = api.selectiveRefresh.partial( partialId );
 			if ( ! widgetPartial ) {
 				widgetPartial = new self.WidgetInstancePartial( partialId, {
 					params: {}
 				} );
-				api.partial.add( widgetPartial.id, widgetPartial );
+				api.selectiveRefresh.partial.add( widgetPartial.id, widgetPartial );
 			}
 
 			// Make sure that there is a container element for the widget in the sidebar, if at least a placeholder.
@@ -410,7 +410,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			// Handle removal of widgets.
 			widgetsRemoved = _.difference( oldWidgetIds, newWidgetIds );
 			_.each( widgetsRemoved, function( removedWidgetId ) {
-				var widgetPartial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
+				var widgetPartial = api.selectiveRefresh.partial( 'widget_instance[' + removedWidgetId + ']' );
 				if ( widgetPartial ) {
 					_.each( widgetPartial.placements(), function( placement ) {
 						var isRemoved = (
@@ -435,7 +435,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				widgetPartial.refresh();
 			} );
 
-			api.trigger( 'sidebar-updated', sidebarPartial );
+			api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
 		},
 
 		/**
@@ -454,7 +454,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				deferred.reject();
 			} else {
 				_.each( partial.reflowWidgets(), function( sidebarPlacement ) {
-					api.trigger( 'partial-content-rendered', sidebarPlacement );
+					api.selectiveRefresh.trigger( 'partial-content-rendered', sidebarPlacement );
 				} );
 				deferred.resolve();
 			}
@@ -463,8 +463,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		}
 	});
 
-	api.partialConstructor.widget_area = self.WidgetAreaPartial;
-	api.partialConstructor.widget_instance = self.WidgetInstancePartial;
+	api.selectiveRefresh.partialConstructor.widget_area = self.WidgetAreaPartial;
+	api.selectiveRefresh.partialConstructor.widget_instance = self.WidgetInstancePartial;
 
 	/**
 	 * Add partials for the registered widget areas (sidebars).
@@ -474,14 +474,14 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	self.addPartials = function() {
 		_.each( self.registeredSidebars, function( registeredSidebar ) {
 			var partial, partialId = 'widget_area[' + registeredSidebar.id + ']';
-			partial = api.partial( partialId );
+			partial = api.selectiveRefresh.partial( partialId );
 			if ( ! partial ) {
 				partial = new self.WidgetAreaPartial( partialId, {
 					params: {
 						sidebarArgs: registeredSidebar
 					}
 				} );
-				api.partial.add( partial.id, partial );
+				api.selectiveRefresh.partial.add( partial.id, partial );
 			}
 		} );
 	};
