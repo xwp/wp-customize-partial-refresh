@@ -817,7 +817,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 *
 		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( placement ) {
+		api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
 			if ( placement.container ) {
 				self.addPartials( placement.container );
 			}

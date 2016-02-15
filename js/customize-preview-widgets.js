@@ -151,7 +151,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			} );
 
 			// Trigger an event for this sidebar being updated whenever a widget inside is rendered.
-			api.bind( 'partial-content-rendered', function( placement ) {
+			api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
 				var isAssignedWidgetPartial = (
 					placement.partial.extended( self.WidgetInstancePartial ) &&
 					( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), placement.partial.widgetId ) )

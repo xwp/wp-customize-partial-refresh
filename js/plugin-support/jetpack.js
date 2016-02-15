@@ -154,7 +154,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 *
 		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( placement ) {
+		api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
 			var idBase = module.getWidgetPartialIdBase( placement.partial );
 			if ( idBase && module.widgetRenderHandlers[ idBase ] ) {
 				module.widgetRenderHandlers[ idBase ]( placement );
@@ -166,7 +166,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 *
 		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-moved', function( placement ) {
+		api.selectiveRefresh.bind( 'partial-content-moved', function( placement ) {
 
 			// Refresh a partial containing a Twitter timeline iframe, since it has to be re-built.
 			if ( $( placement.container ).find( 'iframe.twitter-timeline:not([src]):first' ).length ) {
@@ -192,7 +192,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 *
 		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( placement ) {
+		api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
 			var content = '';
 			if ( _.isString( placement.addedContent ) ) {
 				content = placement.addedContent;
