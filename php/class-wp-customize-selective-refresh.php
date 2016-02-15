@@ -192,7 +192,7 @@ class WP_Customize_Selective_Refresh {
 			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
 			$class = apply_filters( 'customize_dynamic_partial_class', $class, $id, $args );
 
-			$partial = new $class( $this, $id, $args );
+			$partial = new $class( $this->manager, $id, $args );
 		}
 
 		$this->partials[ $partial->id ] = $partial;
@@ -356,7 +356,7 @@ class WP_Customize_Selective_Refresh {
 	 * @see WP_Customize_Manager::add_dynamic_settings()
 	 *
 	 * @param array $partial_ids         The partial ID to add.
-	 * @return WP_Customize_Partial|null The instance or null if no filters applied.
+	 * @return array                     Added WP_Customize_Partial instances.
 	 */
 	public function add_dynamic_partials( $partial_ids ) {
 		$new_partials = array();
@@ -382,7 +382,7 @@ class WP_Customize_Selective_Refresh {
 			 * @since 4.5.0
 			 *
 			 * @param false|array $partial_args The arguments to the WP_Customize_Partial constructor.
-			 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 * @param string      $partial_id   ID for dynamic partial.
 			 */
 			$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
 			if ( false === $partial_args ) {
