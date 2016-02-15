@@ -1,8 +1,8 @@
-/* global wp, test */
+/* global wp, test, module, ok, equal */
 
 jQuery( window ).load( function() {
 
-	var api = wp.customize, $ = jQuery;
+	var api = wp.customize;
 
 	module( 'Customize Preview' );
 
