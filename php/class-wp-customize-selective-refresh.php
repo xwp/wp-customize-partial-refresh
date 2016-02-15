@@ -192,7 +192,7 @@ class WP_Customize_Selective_Refresh {
 			/** This filter (will be) documented in wp-includes/class-wp-customize-manager.php */
 			$class = apply_filters( 'customize_dynamic_partial_class', $class, $id, $args );
 
-			$partial = new $class( $this->manager, $id, $args );
+			$partial = new $class( $this, $id, $args );
 		}
 
 		$this->partials[ $partial->id ] = $partial;

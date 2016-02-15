@@ -20,10 +20,10 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 * Partial representing an invocation of wp_nav_menu().
 	 *
 	 * @class
-	 * @augments wp.customize.Partial
+	 * @augments wp.customize.selectiveRefresh.Partial
 	 * @since 4.5.0
 	 */
-	self.NavMenuInstancePartial = api.Partial.extend({
+	self.NavMenuInstancePartial = api.selectiveRefresh.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -55,7 +55,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				},
 				options.params || {}
 			);
-			api.Partial.prototype.initialize.call( partial, id, options );
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
 
 			if ( ! _.isObject( partial.params.navMenuArgs ) ) {
 				throw new Error( 'Missing navMenuArgs' );
@@ -111,7 +111,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 */
 		renderContent: function( placement ) {
 			var partial = this, previousContainer = placement.container;
-			if ( api.Partial.prototype.renderContent.call( partial, placement ) ) {
+			if ( api.selectiveRefresh.Partial.prototype.renderContent.call( partial, placement ) ) {
 
 				// Trigger deprecated event.
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
@@ -125,7 +125,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		}
 	});
 
-	api.partialConstructor.nav_menu_instance = self.NavMenuInstancePartial;
+	api.selectiveRefresh.partialConstructor.nav_menu_instance = self.NavMenuInstancePartial;
 
 	/**
 	 * Connect nav menu items with their corresponding controls in the pane.
@@ -170,7 +170,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				return;
 			}
 			themeLocation = matches[1];
-			api.partial.each( function( partial ) {
+			api.selectiveRefresh.partial.each( function( partial ) {
 				if ( partial.extended( self.NavMenuInstancePartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
 					partial.refresh();
 					themeLocationPartialFound = true;

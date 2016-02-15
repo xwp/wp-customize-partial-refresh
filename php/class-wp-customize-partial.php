@@ -19,13 +19,13 @@
 class WP_Customize_Partial {
 
 	/**
-	 * Customize manager.
+	 * Component.
 	 *
 	 * @since 4.5.0
 	 * @access public
-	 * @var WP_Customize_Manager
+	 * @var WP_Customize_Selective_Refresh
 	 */
-	public $manager;
+	public $component;
 
 	/**
 	 * Unique identifier for the partial.
@@ -130,15 +130,15 @@ class WP_Customize_Partial {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @param WP_Customize_Manager $manager Customize Partial Refresh plugin instance.
-	 * @param string               $id      Control ID.
-	 * @param array                $args    {
+	 * @param WP_Customize_Selective_Refresh $component Customize Partial Refresh plugin instance.
+	 * @param string                         $id        Control ID.
+	 * @param array                          $args      {
 	 *     Optional. Arguments to override class property defaults.
 	 *
 	 *     @type array|string  $settings        All settings IDs tied to the partial. If undefined, `$id` will be used.
 	 * }
 	 */
-	public function __construct( $manager, $id, $args = array() ) {
+	public function __construct( $component, $id, $args = array() ) {
 		$keys = array_keys( get_object_vars( $this ) );
 		foreach ( $keys as $key ) {
 			if ( isset( $args[ $key ] ) ) {
@@ -146,7 +146,7 @@ class WP_Customize_Partial {
 			}
 		}
 
-		$this->manager = $manager;
+		$this->component = $component;
 		$this->id = $id;
 		$this->id_data['keys'] = preg_split( '/\[/', str_replace( ']', '', $this->id ) );
 		$this->id_data['base'] = array_shift( $this->id_data['keys'] );

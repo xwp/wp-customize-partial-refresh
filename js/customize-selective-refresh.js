@@ -17,6 +17,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		currentRequest: null
 	};
 
+	_.extend( self, api.Events );
+
 	/**
 	 * A Customizer Partial.
 	 *
@@ -36,10 +38,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 * @param {array}  options.params.settings         The IDs for the settings the partial relates to.
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
 	 * @param {bool}   options.params.fallbackRefresh  Whether to refresh the entire preview in case of a partial refresh failure.
-	 *
-	 * @todo Partial should be added to self instead of api namespace.
 	 */
-	Partial = api.Partial = api.Class.extend({
+	Partial = self.Partial = api.Class.extend({
 
 		id: null,
 
@@ -200,7 +200,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 *
 		 * @since 4.5.0
 		 *
-		 * @this {wp.customize.Partial}
+		 * @this {wp.customize.selectiveRefresh.Partial}
 		 * @return {jQuery.Promise}
 		 */
 		refresh: function() {
@@ -303,10 +303,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 			/**
 			 * Announce when a partial's placement has been rendered so that dynamic elements can be re-built.
-			 *
-			 * @todo Should should api.selectiveRefresh implement Events and use it as the message bus instead?
 			 */
-			api.trigger( 'partial-content-rendered', placement );
+			self.trigger( 'partial-content-rendered', placement );
 			return true;
 		},
 
@@ -341,7 +339,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		/**
 		 * The partial with which the container is associated.
 		 *
-		 * @param {wp.customize.Partial}
+		 * @param {wp.customize.selectiveRefresh.Partial}
 		 */
 		partial: null,
 
@@ -438,13 +436,11 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @type {Object.<string, wp.customize.Partial>}
-	 * @todo partialConstructor should be added to self instead of api namespace?
+	 * @type {Object.<string, wp.customize.selectiveRefresh.Partial>}
 	 */
-	api.partialConstructor = {};
+	self.partialConstructor = {};
 
-	// @todo Partial should be added to self instead of api namespace?
-	api.partial = new api.Values({ defaultConstructor: Partial });
+	self.partial = new api.Values({ defaultConstructor: Partial });
 
 	/**
 	 * Get the POST vars for a Customizer preview request.
@@ -474,7 +470,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 * Currently-requested partials and their associated deferreds.
 	 *
 	 * @since 4.5.0
-	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.Partial }>}
+	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.selectiveRefresh.Partial }>}
 	 */
 	self._pendingPartialRequests = {};
 
@@ -513,7 +509,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @param {wp.customize.Partial} partial
+	 * @param {wp.customize.selectiveRefresh.Partial} partial
 	 * @return {jQuery.Promise}
 	 */
 	self.requestPartial = function( partial ) {
@@ -557,7 +553,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 				_.each( self._pendingPartialRequests, function( pending, partialId ) {
 					partialsPlacements[ partialId ] = pending.partial.placements();
-					if ( ! api.partial.has( partialId ) ) {
+					if ( ! self.partial.has( partialId ) ) {
 						pending.deferred.rejectWith( pending.partial, [ new Error( 'partial_removed' ), partialsPlacements[ partialId ] ] );
 					} else {
 						/*
@@ -593,7 +589,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 					 * injected into the page to support the rendered partials.
 					 * This is similar to the 'saved' event.
 					 */
-					api.trigger( 'render-partials-response', data );
+					self.trigger( 'render-partials-response', data );
 
 					// Relay errors (warnings) captured during rendering and relay to console.
 					if ( data.errors && 'undefined' !== typeof console && console.warn ) {
@@ -691,13 +687,13 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 			}
 			containerContext = containerElement.data( 'customize-partial-placement-context' ) || {};
 
-			partial = api.partial( id );
+			partial = self.partial( id );
 			if ( ! partial ) {
 				partialOptions = containerElement.data( 'customize-partial-options' ) || {};
 				partialOptions.constructingContainerContext = containerElement.data( 'customize-partial-placement-context' ) || {};
-				Constructor = api.partialConstructor[ containerElement.data( 'customize-partial-type' ) ] || api.Partial;
+				Constructor = self.partialConstructor[ containerElement.data( 'customize-partial-type' ) ] || self.Partial;
 				partial = new Constructor( id, partialOptions );
-				api.partial.add( partial.id, partial );
+				self.partial.add( partial.id, partial );
 			}
 
 			/*
@@ -711,10 +707,8 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 				/**
 				 * Announce when a partial's nested placement has been re-rendered.
-				 *
-				 * @todo Should should api.selectiveRefresh implement Events and use it as the message bus instead?
 				 */
-				api.trigger( 'partial-content-rendered', new Placement( {
+				self.trigger( 'partial-content-rendered', new Placement( {
 					partial: partial,
 					context: containerContext,
 					container: containerElement
@@ -736,11 +730,11 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
-			var Constructor, partial = api.partial( id );
+			var Constructor, partial = self.partial( id );
 			if ( ! partial ) {
-				Constructor = api.partialConstructor[ data.type ] || api.Partial;
+				Constructor = self.partialConstructor[ data.type ] || self.Partial;
 				partial = new Constructor( id, { params: data } );
-				api.partial.add( id, partial );
+				self.partial.add( id, partial );
 			} else {
 				_.extend( partial.params, data );
 			}
@@ -761,7 +755,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 */
 		handleSettingChange = function( newValue, oldValue ) {
 			var setting = this;
-			api.partial.each( function( partial ) {
+			self.partial.each( function( partial ) {
 				if ( partial.isRelatedSetting( setting, newValue, oldValue ) ) {
 					partial.refresh();
 				}
@@ -832,12 +826,12 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		api.preview.bind( 'active', function() {
 
 			// Make all partials ready.
-			api.partial.each( function( partial ) {
+			self.partial.each( function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 
 			// Make all partials added henceforth as ready upon add.
-			api.partial.bind( 'add', function( partial ) {
+			self.partial.bind( 'add', function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 		} );

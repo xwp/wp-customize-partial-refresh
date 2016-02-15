@@ -61,7 +61,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		/**
 		 * Get the widget ID base for a given partial.
 		 *
-		 * @param {wp.customize.Partial} partial
+		 * @param {wp.customize.selectiveRefresh.Partial} partial
 		 * @param {string}               partial.widgetId
 		 * @returns {string|null}
 		 */
