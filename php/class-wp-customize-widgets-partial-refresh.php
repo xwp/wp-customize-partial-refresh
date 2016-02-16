@@ -65,7 +65,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 */
 	public function customize_dynamic_partial_args( $partial_args, $partial_id ) {
 
-		if ( preg_match( '/^widget_instance\[.+\]$/', $partial_id ) ) {
+		if ( preg_match( '/^widget\[.+\]$/', $partial_id ) ) {
 			if ( false === $partial_args ) {
 				$partial_args = array();
 			}
@@ -164,8 +164,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 			$context['sidebar_instance_number'] = $this->sidebar_instance_count[ $sidebar_args['id'] ];
 		}
 
-		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget_instance[' . $sidebar_args['widget_id'] . ']' ) );
-		$attributes .= ' data-customize-partial-type="widget_instance"';
+		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget[' . $sidebar_args['widget_id'] . ']' ) );
+		$attributes .= ' data-customize-partial-type="widget"';
 		$attributes .= sprintf( ' data-customize-partial-placement-context="%s"', esc_attr( wp_json_encode( $context ) ) );
 		$attributes .= sprintf( ' data-customize-widget-id="%s"', esc_attr( $sidebar_args['widget_id'] ) );
 		$sidebar_args['before_widget'] = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $sidebar_args['before_widget'] );

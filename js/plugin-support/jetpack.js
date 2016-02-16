@@ -67,7 +67,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 */
 		module.getWidgetPartialIdBase = function( partial ) {
 			var matches;
-			if ( ! partial.widgetId || ! partial.extended( api.widgetsPreview.WidgetInstancePartial ) ) {
+			if ( ! partial.widgetId || ! partial.extended( api.widgetsPreview.WidgetPartial ) ) {
 				return null;
 			}
 			matches = partial.widgetId.match( /^(.+?)(-\d+)?$/ );
