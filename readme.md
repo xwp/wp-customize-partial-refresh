@@ -13,63 +13,11 @@ Refresh parts of the Customizer preview instead of reloading the entire page.
 
 ## Description ##
 
-**This is a feature plugin proposed for WordPress 4.5**
+This is a feature plugin for WordPress 4.5
 
-The WordPress Customizer is a framework for previewing any change to a site.
-By default, settings exposed in the Customizer use a `refresh` transport,
-meaning that in order for a setting change to be applied, the entire preview
-has to reload, which has a huge performance hit. The result is a preview that
-is anything but live. To remedy this poor user experience of a laggy
-preview, the Customizer allows settings to opt-in to using a `postMessage`
-transport. This relies on JavaScript to apply the changes live without doing
-any server-side communication at all: changes are applied instantly.
+Please read the Make Core post: [Selective Refresh in the Customizer](https://make.wordpress.org/core/2016/02/16/selective-refresh-in-the-customizer/).
 
-There is a major issue with settings using the `postMessage` transport,
-however: any logic used in PHP to render the setting in the template has to be
-duplicated in JavaScript. Thus the transport is not DRY, and so it is really only
-suitable for simple text or style changes that involve almost no logic, and this
-is commonplace in themes.
-
-What the Customizer needs is a middle-ground between refreshing the entire preview
-to apply changes with PHP and applying the changes exclusively with JavaScript.
-The partial preview refresh is one solution, and is proposed in [#27355](https://core.trac.wordpress.org/ticket/27355).
-
-Partial preview refreshing was first explored when Customizer widget management
-was being developed for the 3.9 release. It was [added](https://github.com/xwp/wp-widget-customizer/pull/37)
-to the Widget Customizer plugin, and described in a [Make Core post](https://make.wordpress.org/core/2014/01/28/widget-customizer-feature-as-plugin-merge-proposal/#section-live-previews).
-But [we decided](https://core.trac.wordpress.org/ticket/27112#comment:10) to
-[remove](https://github.com/xwp/wp-widget-customizer/compare/without-partial-previews)
-the feature in favor of having a better generalized framework for partial refreshes
-in a future release. Partial preview refreshing has been added in 4.3 for changes
-to menus which can now be managed in the Customizer.
-
-This plugin introduces a “selective refresh” framework whereby template *partials*
-are registered. Partials are associated with settings, and when the setting changes
-the partial is refreshed via Ajax. A partial has an associated <code>render_callback</code>
-which is responsible for generating the content for the partial.
-
-The nav menus partial refreshing introduced to Core in 4.3 is re-implemented in this
-plugin to make use of the selective refresh framework. Selective refresh of widgets
-is also implemented using the same framework.
-
-Other examples of selective refresh:
-
-* [Site Title Smilies](https://gist.github.com/westonruter/a15b99bdd07e6f4aae7a)
-* [Welcome Message](https://gist.github.com/westonruter/ed4ae3f8b6f6d653e0c6)
-
-Trivial example of Site Title Smilies showing `wptexturize` also applying in the preview:
-
-[![Play video on YouTube](https://i1.ytimg.com/vi/ikW8dfaOPng/hqdefault.jpg)](https://www.youtube.com/watch?v=ikW8dfaOPng)
-
-<em>Blue sky:</em> If we can eliminate full-page refreshes, we can start to
-introduce controls inline with the preview (e.g. widget controls appearing
-with their widgets), and even eliminate the Customizer <code>iframe</code>
-altogether since the Customizer pane could then slide-in on any existing
-frontend page the user is on without having enter into a completely different
-Customizer state; when done, they can just collapse the Customizer away and
-continue on their way browsing the site.
-
-**Development of this plugin is done [on GitHub](https://github.com/xwp/wp-customize-partial-refresh). Pull requests welcome. Please see [issues](https://github.com/xwp/wp-customize-partial-refresh/issues) reported there before going to the [plugin forum](https://wordpress.org/support/plugin/customize-partial-refresh).**
+Development of this plugin is done [on GitHub](https://github.com/xwp/wp-customize-partial-refresh). Pull requests welcome. Please see [issues](https://github.com/xwp/wp-customize-partial-refresh/issues) reported there before going to the [plugin forum](https://wordpress.org/support/plugin/customize-partial-refresh).
 
 ## Changelog ##
 
