@@ -85,7 +85,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		module.widgetRenderHandlers.twitter_timeline = function( args ) {
 			var hasWidgetIdSupplied = false, dependency;
 
-			args.newContainer.find( '.twitter-timeline[data-widget-id]' ).each( function() {
+			args.container.find( '.twitter-timeline[data-widget-id]' ).each( function() {
 				if ( $( this ).data( 'widgetId' ) ) {
 					hasWidgetIdSupplied = true;
 				}
@@ -101,7 +101,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 				}
 			};
 			self.loadScript( dependency ).done(function() {
-				twttr.widgets.load( args.newContainer[0] );
+				twttr.widgets.load( args.container[0] );
 			});
 		};
 
@@ -111,7 +111,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 		 * @param {object} args
 		 */
 		module.widgetRenderHandlers.widget_contact_info = function( args ) {
-			if ( ! args.newContainer.find( '.contact-map' ).length ) {
+			if ( ! args.container.find( '.contact-map' ).length ) {
 				return;
 			}
 			if ( $( 'link#contact-info-map-css-css' ).length < 1 ) {
@@ -145,7 +145,7 @@ var customizeSelectiveRefreshJetpackModuleSupport = (function( api, $, exports )
 			if ( 'undefined' !== typeof FB ) {
 
 				// @todo This is not reliably rebuilding the Like box, especially after the widget is dragged to a new position and a change is made.
-				FB.XFBML.parse( args.newContainer[0] );
+				FB.XFBML.parse( args.container[0] );
 			}
 		};
 

@@ -18,6 +18,9 @@ Development of this plugin is done [on GitHub](https://github.com/xwp/wp-customi
 
 == Changelog ==
 
+= 0.6.1 =
+Fix Jetpack plugin support to use new `container` event property.
+
 = 0.6.0 =
 * Introduce formalized `Placement` JS construct.
 * Add `sidebar-updated` event.
