@@ -73,6 +73,16 @@ continue on their way browsing the site.
 
 ## Changelog ##
 
+### 0.6.0 ###
+* Introduce formalized `Placement` JS construct.
+* Add `sidebar-updated` event.
+* Add support for Twenty Thirteen theme's Masonry-built sidebar.
+* Update JS namespace to `wp.customize.selectiveRefresh`, with JS objects and events using this as root.
+* Rename `WidgetInstance` to `Widget` and `WidgetArea` to `Sidebar`.
+* Flesh out more PHPUnit tests and add foundations for QUnit tests.
+* Always include the `data-customize-partial-id` attr selector
+* See all changes: [0.5.4...0.6.0](https://github.com/xwp/wp-customize-partial-refresh/compare/0.5.4...0.6.0)
+
 ### 0.5.4 ###
 * Trigger `partial-content-rendered` on nested partials' containers when parent is refreshed.
 * Jetpack: Restrict adding partials to infinity scroll container on `post-load`.
