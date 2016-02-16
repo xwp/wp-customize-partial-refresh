@@ -59,7 +59,7 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 
 			partial.params = _.extend(
 				{
-					selector: '[data-customize-partial-id="' + id + '"]', // @todo Slow. Consider injecting customize-partial-id-${id} classnames.
+					selector: null,
 					settings: [],
 					primarySetting: null,
 					containerInclusive: false,
@@ -107,8 +107,15 @@ wp.customize.selectiveRefresh = ( function( $, api ) {
 		 * @return {Array.<Placement>}
 		 */
 		placements: function() {
-			var partial = this;
-			return $( partial.params.selector ).map( function() {
+			var partial = this, selector;
+
+			selector = partial.params.selector;
+			if ( selector ) {
+				selector += ', ';
+			}
+			selector += '[data-customize-partial-id="' + partial.id + '"]'; // @todo Consider injecting customize-partial-id-${id} classnames instead.
+
+			return $( selector ).map( function() {
 				var container = $( this ), context;
 
 				context = container.data( 'customize-partial-placement-context' );
