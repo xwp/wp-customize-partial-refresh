@@ -101,8 +101,8 @@ class WP_Customize_Selective_Refresh {
 	 * @param WP_Scripts $wp_scripts Scripts.
 	 */
 	function register_scripts( $wp_scripts ) {
-		$handle = 'customize-partial-refresh-pane';
-		$src = $this->dir_url . 'js/customize-partial-refresh-pane.js';
+		$handle = 'customize-controls-hacks';
+		$src = $this->dir_url . 'js/customize-controls-hacks.js';
 		$deps = array( 'customize-controls', 'jquery', 'wp-util' );
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
@@ -113,22 +113,22 @@ class WP_Customize_Selective_Refresh {
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
-		$handle = 'customize-partial-refresh-preview';
-		$src = $this->dir_url . 'js/customize-partial-refresh-preview.js';
+		$handle = 'customize-selective-refresh';
+		$src = $this->dir_url . 'js/customize-selective-refresh.js';
 		$deps = array( 'customize-preview', 'wp-util' );
 		$in_footer = true;
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
 		$handle = 'customize-preview-nav-menus';
 		$src = $this->dir_url . 'js/customize-preview-nav-menus.js';
-		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$deps = array( 'customize-preview', 'customize-selective-refresh' );
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
 
 		$handle = 'customize-preview-widgets';
 		$src = $this->dir_url . 'js/customize-preview-widgets.js';
-		$deps = array( 'customize-preview', 'customize-partial-refresh-preview' );
+		$deps = array( 'customize-preview', 'customize-selective-refresh' );
 		$in_footer = true;
 		$wp_scripts->remove( $handle );
 		$wp_scripts->add( $handle, $src, $deps, $this->get_version(), $in_footer );
@@ -237,6 +237,7 @@ class WP_Customize_Selective_Refresh {
 	public function init_preview() {
 		add_action( 'template_redirect', array( $this, 'handle_render_partials_request' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_scripts' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_preview_theme_plugin_support_scripts' ), 11 );
 	}
 
 	/**
@@ -246,7 +247,7 @@ class WP_Customize_Selective_Refresh {
 	 * @access public
 	 */
 	public function enqueue_pane_scripts() {
-		wp_enqueue_script( 'customize-partial-refresh-pane' );
+		wp_enqueue_script( 'customize-controls-hacks' );
 	}
 
 	/**
@@ -256,10 +257,16 @@ class WP_Customize_Selective_Refresh {
 	 * @access public
 	 */
 	public function enqueue_preview_scripts() {
-		wp_enqueue_script( 'customize-partial-refresh-preview' );
-		$wp_scripts = wp_scripts();
-		$wp_styles = wp_styles();
+		wp_enqueue_script( 'customize-selective-refresh' );
+		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
+	}
 
+	/**
+	 * Enqueue scripts to add support for specific themes and plugins.
+	 *
+	 * This is not relevant to #coremerge.
+	 */
+	public function enqueue_preview_theme_plugin_support_scripts() {
 		/*
 		 * Core does not rebuild MediaElement.js audio and video players when DOM subtrees change.
 		 * The Jetpack Infinite Scroll handles this when a post-load event is triggered.
@@ -271,7 +278,7 @@ class WP_Customize_Selective_Refresh {
 			$exports = array();
 			$handle = 'customize-partial-jetpack-support';
 			$src = $this->dir_url . 'js/plugin-support/jetpack.js';
-			$deps = array( 'customize-partial-refresh-preview' );
+			$deps = array( 'customize-selective-refresh' );
 			$in_footer = true;
 			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
 
@@ -303,7 +310,17 @@ class WP_Customize_Selective_Refresh {
 			wp_scripts()->add_data( $handle, 'data', sprintf( 'var _customizeSelectiveRefreshJetpackExports = %s;', wp_json_encode( $exports ) ) );
 		}
 
-		add_action( 'wp_footer', array( $this, 'export_preview_data' ), 1000 );
+		/*
+		 * Core theme support.
+		 */
+		if ( 'twentythirteen' === get_stylesheet() || 'twentythirteen' === get_template() ) {
+			$handle = 'customize-partial-twentythirteen-support';
+			$src = $this->dir_url . 'js/theme-support/twentythirteen.js';
+			$deps = array( 'customize-selective-refresh' );
+			$in_footer = true;
+			wp_enqueue_script( $handle, $src, $deps, $this->get_version(), $in_footer );
+		}
+
 	}
 
 	/**
@@ -339,7 +356,7 @@ class WP_Customize_Selective_Refresh {
 	 * @see WP_Customize_Manager::add_dynamic_settings()
 	 *
 	 * @param array $partial_ids         The partial ID to add.
-	 * @return WP_Customize_Partial|null The instance or null if no filters applied.
+	 * @return array                     Added WP_Customize_Partial instances.
 	 */
 	public function add_dynamic_partials( $partial_ids ) {
 		$new_partials = array();
@@ -360,12 +377,12 @@ class WP_Customize_Selective_Refresh {
 			 *
 			 * For a dynamic partial to be registered, this filter must be employed
 			 * to override the default false value with an array of args to pass to
-			 * the WP_Customize_Setting constructor.
+			 * the WP_Customize_Partial constructor.
 			 *
 			 * @since 4.5.0
 			 *
-			 * @param false|array $partial_args The arguments to the WP_Customize_Setting constructor.
-			 * @param string      $partial_id   ID for dynamic partial, usually coming from `$_POST['customized']`.
+			 * @param false|array $partial_args The arguments to the WP_Customize_Partial constructor.
+			 * @param string      $partial_id   ID for dynamic partial.
 			 */
 			$partial_args = apply_filters( 'customize_dynamic_partial_args', $partial_args, $partial_id );
 			if ( false === $partial_args ) {
@@ -373,13 +390,13 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			/**
-			 * Allow non-statically created partials to be constructed with custom WP_Customize_Setting subclass.
+			 * Allow non-statically created partials to be constructed with custom WP_Customize_Partial subclass.
 			 *
 			 * @since 4.5.0
 			 *
-			 * @param string $partial_class WP_Customize_Setting or a subclass.
-			 * @param string $partial_id    ID for dynamic partial, usually coming from `$_POST['customized']`.
-			 * @param array  $partial_args  WP_Customize_Setting or a subclass.
+			 * @param string $partial_class WP_Customize_Partial or a subclass.
+			 * @param string $partial_id    ID for dynamic partial.
+			 * @param array  $partial_args  The arguments to the WP_Customize_Partial constructor.
 			 */
 			$partial_class = apply_filters( 'customize_dynamic_partial_class', $partial_class, $partial_id, $partial_args );
 
@@ -450,7 +467,7 @@ class WP_Customize_Selective_Refresh {
 	}
 
 	/**
-	 * Handle Ajax request to return the settings partial value.
+	 * Handle Ajax request to return the rendered partials for the requested placements.
 	 *
 	 * @since 4.5.0
 	 * @access public
@@ -481,16 +498,15 @@ class WP_Customize_Selective_Refresh {
 		/**
 		 * Do setup before rendering each partial.
 		 *
-		 * Plugins may do things like wp_enqueue_scripts() to gather a list of
-		 * the scripts and styles which may get enqueued in the response.
-		 *
-		 * @todo Eventually this should automatically by default do wp_enqueue_scripts(). See below.
+		 * Plugins may do things like call <code>wp_enqueue_scripts()</code> and
+		 * gather a list of the scripts and styles which may get enqueued in the response.
 		 *
 		 * @since 4.5.0
 		 *
-		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to render in the request.
 		 */
-		do_action( 'customize_render_partials_before', $this );
+		do_action( 'customize_render_partials_before', $this, $partials );
 
 		set_error_handler( array( $this, 'handle_error' ), error_reporting() );
 		$contents = array();
@@ -507,6 +523,8 @@ class WP_Customize_Selective_Refresh {
 			}
 
 			$contents[ $partial_id ] = array();
+
+			// @todo The array should include not only the contents, but also whether the container is included?
 			if ( empty( $container_contexts ) ) {
 				// Since there are no container contexts, render just once.
 				$contents[ $partial_id ][] = $partial->render( null );
@@ -519,6 +537,19 @@ class WP_Customize_Selective_Refresh {
 		$this->current_partial_id = null;
 		restore_error_handler();
 
+		/**
+		 * Do finalization after rendering each partial.
+		 *
+		 * Plugins may do things like call <code>wp_footer()</code> to scrape scripts output and
+		 * return them via the customize_render_partials_response filter.
+		 *
+		 * @since 4.5.0
+		 *
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to rendered in the request.
+		 */
+		do_action( 'customize_render_partials_after', $this, $partials );
+
 		$response = array(
 			'contents' => $contents,
 		);
@@ -529,12 +560,18 @@ class WP_Customize_Selective_Refresh {
 		/**
 		 * Filter the response from rendering the partials.
 		 *
-		 * This is similar to the <code>infinite_scroll_results</code> filter in Jetpack,
-		 * and the <code>The_Neverending_Home_Page::filter_infinite_scroll_results()</code>
-		 * function which will amend the response with scripts and styles that are enqueued
-		 * so that the client can inject these new dependencies into the document.
+		 * Plugins may use this filter to inject <code>$scripts</code> and
+		 * <code>$styles</code> which are dependencies for the partials being
+		 * rendered. The response data will be available to the client via the
+		 * <code>render-partials-response</code> JS event, so the client can then
+		 * inject the scripts and styles into the DOM if they have not already
+		 * been enqueued there. If plugins do this, they'll need to take care
+		 * for any scripts that do <code>document.write()</code> and make sure
+		 * that these are not injected, or else to override the function to no-op,
+		 * or else the page will be destroyed.
 		 *
-		 * @todo This method should eventually go ahead and include the enqueued scripts and styles by default. Beware of any sripts that do document.write().
+		 * Plugins should be aware that <code>$scripts</code> and <code>$styles</code>
+		 * these may eventually be included by default in the response.
 		 *
 		 * @since 4.5.0
 		 *
@@ -544,10 +581,10 @@ class WP_Customize_Selective_Refresh {
 		 *     @type array $contents  Associative array mapping a partial ID its corresponding array of contents for the containers requested.
 		 *     @type array [$errors]  List of errors triggered during rendering of partials, if WP_DEBUG_DISPLAY is enabled.
 		 * }
-		 *
-		 * @param WP_Customize_Selective_Refresh $this Selective refresh component.
+		 * @param WP_Customize_Selective_Refresh $this     Selective refresh component.
+		 * @param array                          $partials IDs for the partials to rendered in the request.
 		 */
-		$response = apply_filters( 'customize_render_partials_response', $response, $this );
+		$response = apply_filters( 'customize_render_partials_response', $response, $this, $partials );
 
 		wp_send_json_success( $response );
 	}

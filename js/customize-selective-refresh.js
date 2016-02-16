@@ -1,8 +1,10 @@
 /* global jQuery, JSON, _customizePartialRefreshExports, console */
-wp.customize.selectiveRefreshPreview = ( function( $, api ) {
-	'use strict';
 
-	var self = {
+wp.customize.selectiveRefresh = ( function( $, api ) {
+	'use strict';
+	var self, Partial, Placement;
+
+	self = {
 		ready: $.Deferred(),
 		data: {
 			partials: {},
@@ -14,6 +16,8 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		},
 		currentRequest: null
 	};
+
+	_.extend( self, api.Events );
 
 	/**
 	 * A Customizer Partial.
@@ -35,7 +39,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	 * @param {string} options.params.primarySetting   The ID for the primary setting the partial renders.
 	 * @param {bool}   options.params.fallbackRefresh  Whether to refresh the entire preview in case of a partial refresh failure.
 	 */
-	api.Partial = api.Class.extend({
+	Partial = self.Partial = api.Class.extend({
 
 		id: null,
 
@@ -55,7 +59,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 
 			partial.params = _.extend(
 				{
-					selector: '[data-customize-partial-id="' + id + '"]', // @todo Slow. Consider injecting customize-partial-id-${id} classnames.
+					selector: null,
 					settings: [],
 					primarySetting: null,
 					containerInclusive: false,
@@ -79,16 +83,16 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 */
 		ready: function() {
 			var partial = this;
-			_.each( _.pluck( partial.containers(), 'element' ), function( element ) {
-				element.attr( 'title', self.data.l10n.shiftClickToEdit );
+			_.each( _.pluck( partial.placements(), 'container' ), function( container ) {
+				$( container ).attr( 'title', self.data.l10n.shiftClickToEdit );
 			} );
 			$( document ).on( 'click', partial.params.selector, function( e ) {
 				if ( ! e.shiftKey ) {
 					return;
 				}
 				e.preventDefault();
-				_.each( partial.containers(), function( container ) {
-					if ( container.element.is( e.currentTarget ) ) {
+				_.each( partial.placements(), function( placement ) {
+					if ( $( placement.container ).is( e.currentTarget ) ) {
 						partial.showControl();
 					}
 				} );
@@ -96,26 +100,34 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Find all elements by the selector and return along with any context data supplied on the container.
+		 * Find all placements for this partial int he document.
 		 *
 		 * @since 4.5.0
 		 *
-		 * @return {Array.<Object>}
+		 * @return {Array.<Placement>}
 		 */
-		containers: function() {
-			var partial = this;
-			return $( partial.params.selector ).map( function() {
+		placements: function() {
+			var partial = this, selector;
+
+			selector = partial.params.selector;
+			if ( selector ) {
+				selector += ', ';
+			}
+			selector += '[data-customize-partial-id="' + partial.id + '"]'; // @todo Consider injecting customize-partial-id-${id} classnames instead.
+
+			return $( selector ).map( function() {
 				var container = $( this ), context;
 
-				context = container.data( 'customize-partial-container-context' );
+				context = container.data( 'customize-partial-placement-context' );
 				if ( _.isString( context ) && '{' === context.substr( 0, 1 ) ) {
 					throw new Error( 'context JSON parse error' );
 				}
 
-				return {
-					element: container,
+				return new Placement( {
+					partial: partial,
+					container: container,
 					context: context
-				};
+				} );
 			} ).get();
 		},
 
@@ -175,9 +187,11 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 * Prepare container for selective refresh.
 		 *
 		 * @since 4.5.0
+		 *
+		 * @param {Placement} placement
 		 */
-		prepareContainer: function( container ) {
-			container.element.addClass( 'customize-partial-refreshing' );
+		preparePlacement: function( placement ) {
+			$( placement.container ).addClass( 'customize-partial-refreshing' );
 		},
 
 		/**
@@ -189,11 +203,11 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		_pendingRefreshPromise: null,
 
 		/**
-		 * Request the new partial and render it into the containers.
+		 * Request the new partial and render it into the placements.
 		 *
 		 * @since 4.5.0
 		 *
-		 * @this {wp.customize.Partial}
+		 * @this {wp.customize.selectiveRefresh.Partial}
 		 * @return {jQuery.Promise}
 		 */
 		refresh: function() {
@@ -202,18 +216,18 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			refreshPromise = self.requestPartial( partial );
 
 			if ( ! partial._pendingRefreshPromise ) {
-				_.each( partial.containers(), function( container ) {
-					partial.prepareContainer( container );
+				_.each( partial.placements(), function( placement ) {
+					partial.preparePlacement( placement );
 				} );
 
-				refreshPromise.done( function( containers ) {
-					_.each( containers, function( container ) {
-						partial.renderContent( _.extend( {}, container ) );
+				refreshPromise.done( function( placements ) {
+					_.each( placements, function( placement ) {
+						partial.renderContent( placement );
 					} );
 				} );
 
-				refreshPromise.fail( function( data, containers ) {
-					partial.fallback( data, containers );
+				refreshPromise.fail( function( data, placements ) {
+					partial.fallback( data, placements );
 				} );
 
 				// Allow new request when this one finishes.
@@ -227,79 +241,77 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		},
 
 		/**
-		 * Prepare containers for selective refresh.
+		 * Apply the addedContent in the placement to the document.
 		 *
-		 * @todo Change args to be positional for closer parity with render filters? $rendered, $partial, $container_context
+		 * Note the placement object will have its container and removedNodes
+		 * properties updated.
+		 *
 		 * @since 4.5.0
 		 *
-		 * @param {object}                container
-		 * @param {jQuery}                [container.element] - This param will be empty if there was no element matching the selector.
-		 * @param {string|object|boolean} container.content   - Rendered HTML content, a data object for JS templates to render, or false if no render.
-		 * @param {object}                [container.context] - Optional context information about the container.
+		 * @param {Placement}             placement
+		 * @param {Element|jQuery}        [placement.container]  - This param will be empty if there was no element matching the selector.
+		 * @param {string|object|boolean} placement.addedContent - Rendered HTML content, a data object for JS templates to render, or false if no render.
+		 * @param {object}                [placement.context]    - Optional context information about the container.
 		 * @returns {boolean} Whether the rendering was successful and the fallback was not invoked.
 		 */
-		renderContent: function( container ) {
-			var partial = this, context, content, newContainerElement, oldContainerElement;
-			if ( ! container.element ) {
-				partial.fallback( new Error( 'no_element' ), [ container ] );
+		renderContent: function( placement ) {
+			var partial = this, content, newContainerElement;
+			if ( ! placement.container ) {
+				partial.fallback( new Error( 'no_container' ), [ placement ] );
 				return false;
 			}
-			if ( false === container.content ) {
-				partial.fallback( new Error( 'missing_render' ), [ container ] );
+			placement.container = $( placement.container );
+			if ( false === placement.addedContent ) {
+				partial.fallback( new Error( 'missing_render' ), [ placement ] );
 				return false;
 			}
 
 			// Currently a subclass needs to override renderContent to handle partials returning data object.
-			if ( ! _.isString( container.content ) ) {
-				partial.fallback( new Error( 'non_string_content' ), [ container ] );
+			if ( ! _.isString( placement.addedContent ) ) {
+				partial.fallback( new Error( 'non_string_content' ), [ placement ] );
 				return false;
 			}
 
-			content = container.content;
-			if ( wp.emoji && wp.emoji.parse ) {
+			content = placement.addedContent;
+			if ( wp.emoji && wp.emoji.parse && ! $.contains( document.head, placement.container[0] ) ) {
 				content = wp.emoji.parse( content );
 			}
 
-			oldContainerElement = container.element;
+			// @todo Should containerInclusive be context information as opposed to a param?
 			if ( partial.params.containerInclusive ) {
 
 				// Note that content may be an empty string, and in this case jQuery will just remove the oldContainer
 				newContainerElement = $( content );
 
 				// Merge the new context on top of the old context.
-				context = _.extend(
-					{},
-					oldContainerElement.data( 'customize-partial-container-context' ) || {},
-					newContainerElement.data( 'customize-partial-container-context' ) || {}
+				placement.context = _.extend(
+					placement.context,
+					newContainerElement.data( 'customize-partial-placement-context' ) || {}
 				);
-				if ( ! _.isEmpty( context ) ) {
-					newContainerElement.data( 'customize-partial-container-context', context );
+				newContainerElement.data( 'customize-partial-placement-context', placement.context );
+
+				placement.removedNodes = placement.container;
+				placement.container = newContainerElement;
+				placement.removedNodes.replaceWith( placement.container );
+				placement.container.attr( 'title', self.data.l10n.shiftClickToEdit );
+			} else {
+				placement.removedNodes = document.createDocumentFragment();
+				while ( placement.container[0].firstChild ) {
+					placement.removedNodes.appendChild( placement.container[0].firstChild );
 				}
 
-				container.element = newContainerElement;
-				oldContainerElement.replaceWith( newContainerElement );
-				container.element.attr( 'title', self.data.l10n.shiftClickToEdit );
-			} else {
-				newContainerElement = container.element;
-				container.element.html( content );
+				placement.container.html( content );
 			}
 
-			container.element.removeClass( 'customize-partial-refreshing' );
-			container.element.data( 'customize-partial-content-rendered', true );
+			placement.container.removeClass( 'customize-partial-refreshing' );
 
-			/*
-			 * Trigger an event so that dynamic elements can be re-built.
-			 *
-			 * Ideally Core should add support for automatically initializing MediaElement.js elements on subtree modifications.
-			 * See https://github.com/Automattic/jetpack/blob/master/modules/infinite-scroll/infinity.js#L372-L426
+			// Prevent placement container from being being re-triggered as being rendered among nested partials.
+			placement.container.data( 'customize-partial-content-rendered', true );
+
+			/**
+			 * Announce when a partial's placement has been rendered so that dynamic elements can be re-built.
 			 */
-			api.trigger( 'partial-content-rendered', {
-				partial: partial,
-				content: content,
-				context: container.context,
-				newContainer: newContainerElement,
-				oldContainer: oldContainerElement
-			} );
+			self.trigger( 'partial-content-rendered', placement );
 			return true;
 		},
 
@@ -319,15 +331,123 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	} );
 
 	/**
+	 * A Placement for a Partial.
+	 *
+	 * A partial placement is the actual physical representation of a partial for a given context.
+	 * It also may have information in relation to how a placement may have just changed.
+	 * The placement is conceptually similar to a DOM Range or MutationRecord.
+	 *
+	 * @class
+	 * @augments wp.customize.Class
+	 * @since 4.5.0
+	 */
+	self.Placement = Placement = api.Class.extend({
+
+		/**
+		 * The partial with which the container is associated.
+		 *
+		 * @param {wp.customize.selectiveRefresh.Partial}
+		 */
+		partial: null,
+
+		/**
+		 * DOM element which contains the placement's contents.
+		 *
+		 * This will be null if the startNode and endNode do not point to the same
+		 * DOM element, such as in the case of a sidebar partial.
+		 * This container element itself will be replaced for partials that
+		 * have containerInclusive param defined as true.
+		 */
+		container: null,
+
+		/**
+		 * DOM node for the initial boundary of the placement.
+		 *
+		 * This will normally be the same as endNode since most placements appear as elements.
+		 * This is primarily useful for widget sidebars which do not have intrinsic containers, but
+		 * for which an HTML comment is output before to mark the starting position.
+		 */
+		startNode: null,
+
+		/**
+		 * DOM node for the terminal boundary of the placement.
+		 *
+		 * This will normally be the same as startNode since most placements appear as elements.
+		 * This is primarily useful for widget sidebars which do not have intrinsic containers, but
+		 * for which an HTML comment is output before to mark the ending position.
+		 */
+		endNode: null,
+
+		/**
+		 * Context data.
+		 *
+		 * This provides information about the placement which is included in the request
+		 * in order to render the partial properly.
+		 *
+		 * @param {object}
+		 */
+		context: null,
+
+		/**
+		 * The content for the partial when refreshed.
+		 *
+		 * @param {string}
+		 */
+		addedContent: null,
+
+		/**
+		 * DOM node(s) removed when the partial is refreshed.
+		 *
+		 * If the partial is containerInclusive, then the removedNodes will be
+		 * the single Element that was the partial's former placement. If the
+		 * partial is not containerInclusive, then the removedNodes will be a
+		 * documentFragment containing the nodes removed.
+		 *
+		 * @param {Element|DocumentFragment}
+		 */
+		removedNodes: null,
+
+		/**
+		 * Constructor.
+		 *
+		 * @since 4.5.0
+		 *
+		 * @param {object}                   args
+		 * @param {Partial}                  args.partial
+		 * @param {jQuery|Element}           [args.container]
+		 * @param {Node}                     [args.startNode]
+		 * @param {Node}                     [args.endNode]
+		 * @param {object}                   [args.context]
+		 * @param {string}                   [args.addedContent]
+		 * @param {jQuery|DocumentFragment}  [args.removedNodes]
+		 */
+		initialize: function( args ) {
+			var placement = this;
+
+			args = _.extend( {}, args || {} );
+			if ( ! args.partial || ! args.partial.extended( Partial ) ) {
+				throw new Error( 'Missing partial' );
+			}
+			args.context = args.context || {};
+			if ( args.container ) {
+				args.container = $( args.container );
+			}
+
+			_.extend( placement, args );
+		}
+
+	});
+
+	/**
 	 * Mapping of type names to Partial constructor subclasses.
 	 *
 	 * @since 4.5.0
 	 *
-	 * @type {Object.<string, wp.customize.Partial>}
+	 * @type {Object.<string, wp.customize.selectiveRefresh.Partial>}
 	 */
-	api.partialConstructor = {};
+	self.partialConstructor = {};
 
-	api.partial = new api.Values({ defaultConstructor: api.Partial });
+	self.partial = new api.Values({ defaultConstructor: Partial });
 
 	/**
 	 * Get the POST vars for a Customizer preview request.
@@ -357,7 +477,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	 * Currently-requested partials and their associated deferreds.
 	 *
 	 * @since 4.5.0
-	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.Partial }>}
+	 * @type {Object<string, { deferred: jQuery.Promise, partial: wp.customize.selectiveRefresh.Partial }>}
 	 */
 	self._pendingPartialRequests = {};
 
@@ -396,7 +516,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @param {wp.customize.Partial} partial
+	 * @param {wp.customize.selectiveRefresh.Partial} partial
 	 * @return {jQuery.Promise}
 	 */
 	self.requestPartial = function( partial ) {
@@ -425,7 +545,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 
 		self._debouncedTimeoutId = setTimeout(
 			function() {
-				var data, partialContainerContexts, partialsContainers, request;
+				var data, partialPlacementContexts, partialsPlacements, request;
 
 				self._debouncedTimeoutId = null;
 				data = self.getCustomizeQuery();
@@ -434,14 +554,14 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				 * It is key that the containers be fetched exactly at the point of the request being
 				 * made, because the containers need to be mapped to responses by array indices.
 				 */
-				partialsContainers = {};
+				partialsPlacements = {};
 
-				partialContainerContexts = {};
+				partialPlacementContexts = {};
 
 				_.each( self._pendingPartialRequests, function( pending, partialId ) {
-					partialsContainers[ partialId ] = pending.partial.containers();
-					if ( ! api.partial.has( partialId ) ) {
-						pending.deferred.rejectWith( pending.partial, [ new Error( 'partial_removed' ), partialsContainers[ partialId ] ] );
+					partialsPlacements[ partialId ] = pending.partial.placements();
+					if ( ! self.partial.has( partialId ) ) {
+						pending.deferred.rejectWith( pending.partial, [ new Error( 'partial_removed' ), partialsPlacements[ partialId ] ] );
 					} else {
 						/*
 						 * Note that this may in fact be an empty array. In that case, it is the responsibility
@@ -450,13 +570,13 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 						 * is the context information that may be needed to render certain partials, such as
 						 * the contained sidebar for rendering widgets or what the nav menu args are for a menu.
 						 */
-						partialContainerContexts[ partialId ] = _.map( partialsContainers[ partialId ], function( container ) {
-							return container.context || {};
+						partialPlacementContexts[ partialId ] = _.map( partialsPlacements[ partialId ], function( placement ) {
+							return placement.context || {};
 						} );
 					}
 				} );
 
-				data.partials = JSON.stringify( partialContainerContexts );
+				data.partials = JSON.stringify( partialPlacementContexts );
 				data[ self.data.renderQueryVar ] = '1';
 
 				request = self._currentRequest = wp.ajax.send( null, {
@@ -465,6 +585,18 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 				} );
 
 				request.done( function( data ) {
+
+					/**
+					 * Announce the data returned from a request to render partials.
+					 *
+					 * The data is filtered on the server via customize_render_partials_response
+					 * so plugins can inject data from the server to be utilized
+					 * on the client via this event. Plugins may use this filter
+					 * to communicate script and style dependencies that need to get
+					 * injected into the page to support the rendered partials.
+					 * This is similar to the 'saved' event.
+					 */
+					self.trigger( 'render-partials-response', data );
 
 					// Relay errors (warnings) captured during rendering and relay to console.
 					if ( data.errors && 'undefined' !== typeof console && console.warn ) {
@@ -480,17 +612,23 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 					 * and send them into .
 					 */
 					_.each( self._pendingPartialRequests, function( pending, partialId ) {
-						var containersContents;
+						var placementsContents;
 						if ( ! _.isArray( data.contents[ partialId ] ) ) {
-							pending.deferred.rejectWith( pending.partial, [ new Error( 'unrecognized_partial' ), partialsContainers[ partialId ] ] );
+							pending.deferred.rejectWith( pending.partial, [ new Error( 'unrecognized_partial' ), partialsPlacements[ partialId ] ] );
 						} else {
-							containersContents = _.map( data.contents[ partialId ], function( content, i ) {
-								return _.extend(
-									partialsContainers[ partialId ][ i ] || {}, // Note that {} means no containers were selected, partial.fallback() likely to be called.
-									{ content: content }
-								);
+							placementsContents = _.map( data.contents[ partialId ], function( content, i ) {
+								var partialPlacement = partialsPlacements[ partialId ][ i ];
+								if ( partialPlacement ) {
+									partialPlacement.addedContent = content;
+								} else {
+									partialPlacement = new Placement( {
+										partial: pending.partial,
+										addedContent: content
+									} );
+								}
+								return partialPlacement;
 							} );
-							pending.deferred.resolveWith( pending.partial, [ containersContents ] );
+							pending.deferred.resolveWith( pending.partial, [ placementsContents ] );
 						}
 					} );
 					self._pendingPartialRequests = {};
@@ -508,7 +646,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 					}
 
 					_.each( self._pendingPartialRequests, function( pending, partialId ) {
-						pending.deferred.rejectWith( pending.partial, [ data, partialsContainers[ partialId ] ] );
+						pending.deferred.rejectWith( pending.partial, [ data, partialsPlacements[ partialId ] ] );
 					} );
 					self._pendingPartialRequests = {};
 				} );
@@ -534,7 +672,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	self.addPartials = function( rootElement, options ) {
 		var containerElements;
 		if ( ! rootElement ) {
-			rootElement = document.body;
+			rootElement = document.documentElement;
 		}
 		rootElement = $( rootElement );
 		options = _.extend(
@@ -554,15 +692,15 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			if ( ! id ) {
 				return;
 			}
-			containerContext = containerElement.data( 'customize-partial-container-context' ) || {};
+			containerContext = containerElement.data( 'customize-partial-placement-context' ) || {};
 
-			partial = api.partial( id );
+			partial = self.partial( id );
 			if ( ! partial ) {
 				partialOptions = containerElement.data( 'customize-partial-options' ) || {};
-				partialOptions.constructingContainerContext = containerElement.data( 'customize-partial-container-context' ) || {};
-				Constructor = api.partialConstructor[ containerElement.data( 'customize-partial-type' ) ] || api.Partial;
+				partialOptions.constructingContainerContext = containerElement.data( 'customize-partial-placement-context' ) || {};
+				Constructor = self.partialConstructor[ containerElement.data( 'customize-partial-type' ) ] || self.Partial;
 				partial = new Constructor( id, partialOptions );
-				api.partial.add( partial.id, partial );
+				self.partial.add( partial.id, partial );
 			}
 
 			/*
@@ -573,13 +711,15 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 			 * will be triggered for the nested nav menu to do any initialization.
 			 */
 			if ( options.triggerRendered && ! containerElement.data( 'customize-partial-content-rendered' ) ) {
-				api.trigger( 'partial-content-rendered', {
+
+				/**
+				 * Announce when a partial's nested placement has been re-rendered.
+				 */
+				self.trigger( 'partial-content-rendered', new Placement( {
 					partial: partial,
-					content: null,
 					context: containerContext,
-					newContainer: containerElement,
-					oldContainer: null
-				} );
+					container: containerElement
+				} ) );
 			}
 			containerElement.data( 'customize-partial-content-rendered', true );
 		} );
@@ -588,15 +728,20 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 	api.bind( 'preview-ready', function() {
 		var handleSettingChange, watchSettingChange, unwatchSettingChange;
 
+		// Polyfill for IE8 to support the document.head attribute.
+		if ( ! document.head ) {
+			document.head = $( 'head:first' )[0];
+		}
+
 		_.extend( self.data, _customizePartialRefreshExports );
 
 		// Create the partial JS models.
 		_.each( self.data.partials, function( data, id ) {
-			var Constructor, partial = api.partial( id );
+			var Constructor, partial = self.partial( id );
 			if ( ! partial ) {
-				Constructor = api.partialConstructor[ data.type ] || api.Partial;
+				Constructor = self.partialConstructor[ data.type ] || self.Partial;
 				partial = new Constructor( id, { params: data } );
-				api.partial.add( id, partial );
+				self.partial.add( id, partial );
 			} else {
 				_.extend( partial.params, data );
 			}
@@ -617,7 +762,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		 */
 		handleSettingChange = function( newValue, oldValue ) {
 			var setting = this;
-			api.partial.each( function( partial ) {
+			self.partial.each( function( partial ) {
 				if ( partial.isRelatedSetting( setting, newValue, oldValue ) ) {
 					partial.refresh();
 				}
@@ -657,7 +802,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		} );
 
 		// Add (dynamic) initial partials that are declared via data-* attributes.
-		self.addPartials( document.body, {
+		self.addPartials( document.documentElement, {
 			triggerRendered: false
 		} );
 
@@ -668,7 +813,7 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 					self.addPartials( $( mutation.target ) );
 				} );
 			} );
-			self.mutationObserver.observe( document.body, {
+			self.mutationObserver.observe( document.documentElement, {
 				childList: true,
 				subtree: true
 			} );
@@ -677,26 +822,23 @@ wp.customize.selectiveRefreshPreview = ( function( $, api ) {
 		/**
 		 * Handle rendering of partials.
 		 *
-		 * @param {object}               args
-		 * @param {wp.customize.Partial} args.partial
-		 * @param {string|object|null}   args.content - Will be null in the case of a nested partial being re-rendered.
-		 * @param {object}               args.context
-		 * @param {jQuery}               args.newContainer
-		 * @param {jQuery|null}          args.oldContainer - Will be null in case of nested partial being re-rendered.
+		 * @param {api.selectiveRefresh.Placement} placement
 		 */
-		api.bind( 'partial-content-rendered', function( args ) {
-			self.addPartials( args.newContainer );
+		api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
+			if ( placement.container ) {
+				self.addPartials( placement.container );
+			}
 		} );
 
 		api.preview.bind( 'active', function() {
 
 			// Make all partials ready.
-			api.partial.each( function( partial ) {
+			self.partial.each( function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 
 			// Make all partials added henceforth as ready upon add.
-			api.partial.bind( 'add', function( partial ) {
+			self.partial.bind( 'add', function( partial ) {
 				partial.deferred.ready.resolve();
 			} );
 		} );

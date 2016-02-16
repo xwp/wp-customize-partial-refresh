@@ -20,10 +20,10 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 	 * Partial representing an invocation of wp_nav_menu().
 	 *
 	 * @class
-	 * @augments wp.customize.Partial
+	 * @augments wp.customize.selectiveRefresh.Partial
 	 * @since 4.5.0
 	 */
-	self.NavMenuPlacementPartial = api.Partial.extend({
+	self.NavMenuInstancePartial = api.selectiveRefresh.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -40,9 +40,9 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches, argsHmac;
-			matches = id.match( /^nav_menu_placement\[([0-9a-f]{32})]$/ );
+			matches = id.match( /^nav_menu_instance\[([0-9a-f]{32})]$/ );
 			if ( ! matches ) {
-				throw new Error( 'Illegal id for nav_menu_placement partial. The key corresponds with the args HMAC.' );
+				throw new Error( 'Illegal id for nav_menu_instance partial. The key corresponds with the args HMAC.' );
 			}
 			argsHmac = matches[1];
 
@@ -55,7 +55,7 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				},
 				options.params || {}
 			);
-			api.Partial.prototype.initialize.call( partial, id, options );
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
 
 			if ( ! _.isObject( partial.params.navMenuArgs ) ) {
 				throw new Error( 'Missing navMenuArgs' );
@@ -107,25 +107,25 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 		 * Render content.
 		 *
 		 * @inheritdoc
-		 * @param {object} container
+		 * @param {wp.customize.selectiveRefresh.Placement} placement
 		 */
-		renderContent: function( container ) {
-			var partial = this, previousContainer = container.element;
-			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
+		renderContent: function( placement ) {
+			var partial = this, previousContainer = placement.container;
+			if ( api.selectiveRefresh.Partial.prototype.renderContent.call( partial, placement ) ) {
 
 				// Trigger deprecated event.
 				$( document ).trigger( 'customize-preview-menu-refreshed', [ {
 					instanceNumber: null, // @deprecated
-					wpNavArgs: container.context, // @deprecated
-					wpNavMenuArgs: container.context,
+					wpNavArgs: placement.context, // @deprecated
+					wpNavMenuArgs: placement.context,
 					oldContainer: previousContainer,
-					newContainer: container.element
+					newContainer: placement.container
 				} ] );
 			}
 		}
 	});
 
-	api.partialConstructor.nav_menu_placement = self.NavMenuPlacementPartial;
+	api.selectiveRefresh.partialConstructor.nav_menu_instance = self.NavMenuInstancePartial;
 
 	/**
 	 * Connect nav menu items with their corresponding controls in the pane.
@@ -170,15 +170,15 @@ wp.customize.navMenusPreview = wp.customize.MenusCustomizerPreview = ( function(
 				return;
 			}
 			themeLocation = matches[1];
-			api.partial.each( function( partial ) {
-				if ( partial.extended( self.NavMenuPlacementPartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
+			api.selectiveRefresh.partial.each( function( partial ) {
+				if ( partial.extended( self.NavMenuInstancePartial ) && partial.params.navMenuArgs.theme_location === themeLocation ) {
 					partial.refresh();
 					themeLocationPartialFound = true;
 				}
 			} );
 
 			if ( ! themeLocationPartialFound ) {
-				api.selectiveRefreshPreview.requestFullRefresh();
+				api.selectiveRefresh.requestFullRefresh();
 			}
 		} );
 	};

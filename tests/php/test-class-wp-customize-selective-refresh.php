@@ -61,8 +61,7 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 * @see WP_Customize_Selective_Refresh::__construct()
 	 */
 	function test_construct() {
-		$this->assertEquals( $this->wp_customize, $this->wp_customize->selective_refresh->manager );
-		$this->assertInstanceOf( 'WP_Customize_Manager', $this->wp_customize->selective_refresh->manager );
+		$this->assertEquals( $this->selective_refresh, $this->wp_customize->selective_refresh );
 	}
 
 	/**
@@ -73,9 +72,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	function test_register_scripts() {
 		$scripts = new WP_Scripts();
 		$handles = array(
-			'customize-partial-refresh-pane',
+			'customize-controls-hacks',
 			'customize-widgets-hacks',
-			'customize-partial-refresh-preview',
+			'customize-selective-refresh',
 			'customize-preview-nav-menus',
 			'customize-preview-widgets',
 		);
@@ -117,6 +116,7 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_crud_partial() {
 		$partial = $this->selective_refresh->add_partial( 'foo' );
+		$this->assertEquals( $this->selective_refresh, $partial->component );
 		$this->assertInstanceOf( 'WP_Customize_Partial', $partial );
 		$this->assertEquals( $partial, $this->selective_refresh->get_partial( $partial->id ) );
 		$this->assertArrayHasKey( $partial->id, $this->selective_refresh->partials() );
@@ -125,8 +125,17 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 		$this->assertEmpty( $this->selective_refresh->get_partial( $partial->id ) );
 		$this->assertArrayNotHasKey( $partial->id, $this->selective_refresh->partials() );
 
-		// @todo Test applying of customize_dynamic_partial_args filter.
-		// @todo Test applying of customize_dynamic_partial_class filter.
+		$partial = new WP_Customize_Partial( $this->selective_refresh, 'bar' );
+		$this->assertEquals( $partial, $this->selective_refresh->add_partial( $partial ) );
+		$this->assertEquals( $partial, $this->selective_refresh->get_partial( 'bar' ) );
+		$this->assertEqualSets( array( 'bar' ), array_keys( $this->selective_refresh->partials() ) );
+
+		add_filter( 'customize_dynamic_partial_args', array( $this, 'filter_customize_dynamic_partial_args' ), 10, 2 );
+		add_filter( 'customize_dynamic_partial_class', array( $this, 'filter_customize_dynamic_partial_class' ), 10, 3 );
+
+		$partial = $this->selective_refresh->add_partial( 'recognized-class' );
+		$this->assertInstanceOf( 'Tested_Custom_Partial', $partial );
+		$this->assertEquals( '.recognized', $partial->selector );
 	}
 
 	/**
@@ -147,9 +156,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_enqueue_pane_scripts() {
 		$scripts = wp_scripts();
-		$this->assertNotContains( 'customize-partial-refresh-pane', $scripts->queue );
+		$this->assertNotContains( 'customize-controls-hacks', $scripts->queue );
 		$this->selective_refresh->enqueue_pane_scripts();
-		$this->assertContains( 'customize-partial-refresh-pane', $scripts->queue );
+		$this->assertContains( 'customize-controls-hacks', $scripts->queue );
 	}
 
 	/**
@@ -159,9 +168,9 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 */
 	function test_enqueue_preview_scripts() {
 		$scripts = wp_scripts();
-		$this->assertNotContains( 'customize-partial-refresh-preview', $scripts->queue );
+		$this->assertNotContains( 'customize-selective-refresh', $scripts->queue );
 		$this->selective_refresh->enqueue_preview_scripts();
-		$this->assertContains( 'customize-partial-refresh-preview', $scripts->queue );
+		$this->assertContains( 'customize-selective-refresh', $scripts->queue );
 		$this->assertEquals( 1000, has_action( 'wp_footer', array( $this->selective_refresh, 'export_preview_data' ) ) );
 	}
 
@@ -194,7 +203,66 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	 * @see WP_Customize_Selective_Refresh::add_dynamic_partials()
 	 */
 	function test_add_dynamic_partials() {
-		$this->markTestIncomplete();
+		$partial_ids = array( 'recognized', 'recognized-class', 'unrecognized', 'already-added' );
+
+		$partials = $this->selective_refresh->add_dynamic_partials( $partial_ids );
+		$this->assertEmpty( $partials );
+
+		$this->selective_refresh->add_partial( 'already-added' );
+
+		add_filter( 'customize_dynamic_partial_args', array( $this, 'filter_customize_dynamic_partial_args' ), 10, 2 );
+		add_filter( 'customize_dynamic_partial_class', array( $this, 'filter_customize_dynamic_partial_class' ), 10, 3 );
+
+		$partials = $this->selective_refresh->add_dynamic_partials( $partial_ids );
+		$this->assertEqualSets( array( 'recognized', 'recognized-class' ), wp_list_pluck( $partials, 'id' ) );
+
+		$this->assertInstanceOf( 'Tested_Custom_Partial', $this->selective_refresh->get_partial( 'recognized-class' ) );
+		$this->assertNotInstanceOf( 'Tested_Custom_Partial', $this->selective_refresh->get_partial( 'recognized' ) );
+		$this->assertEquals( '.recognized', $this->selective_refresh->get_partial( 'recognized' )->selector );
+	}
+
+	/**
+	 * Filter customize_dynamic_partial_args.
+	 *
+	 * @see Test_WP_Customize_Selective_Refresh::test_add_dynamic_partials()
+	 *
+	 * @param false|array $partial_args The arguments to the WP_Customize_Partial constructor.
+	 * @param string      $partial_id   ID for dynamic partial.
+	 * @return false|array $args Dynamic partial args.
+	 */
+	function filter_customize_dynamic_partial_args( $partial_args, $partial_id ) {
+		$this->assertTrue( false === $partial_args || is_array( $partial_args ) );
+		$this->assertInternalType( 'string', $partial_id );
+
+		if ( preg_match( '/^recognized/', $partial_id ) ) {
+			$partial_args = array(
+				'selector' => '.recognized',
+			);
+		}
+
+		return $partial_args;
+	}
+
+	/**
+	 * Filter customize_dynamic_partial_class.
+	 *
+	 * @see Test_WP_Customize_Selective_Refresh::test_add_dynamic_partials()
+	 *
+	 * @param string $partial_class WP_Customize_Partial or a subclass.
+	 * @param string $partial_id    ID for dynamic partial.
+	 * @param array  $partial_args  The arguments to the WP_Customize_Partial constructor.
+	 * @return string
+	 */
+	function filter_customize_dynamic_partial_class( $partial_class, $partial_id, $partial_args ) {
+		$this->assertInternalType( 'array', $partial_args );
+		$this->assertInternalType( 'string', $partial_id );
+		$this->assertInternalType( 'string', $partial_class );
+
+		if ( 'recognized-class' === $partial_id ) {
+			$partial_class = 'Tested_Custom_Partial';
+		}
+
+		return $partial_class;
 	}
 
 	/**
@@ -226,4 +294,19 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 		unset( $GLOBALS['wp_scripts'] );
 		parent::tearDown();
 	}
+}
+
+require_once dirname( __FILE__ ) . '/../../php/class-wp-customize-partial.php';
+
+/**
+ * Class Tested_Custom_Partial
+ */
+class Tested_Custom_Partial extends WP_Customize_Partial {
+
+	/**
+	 * Type.
+	 *
+	 * @var string
+	 */
+	public $type = 'custom';
 }

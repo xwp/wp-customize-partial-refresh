@@ -40,65 +40,10 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	 * Partial representing a widget instance.
 	 *
 	 * @class
-	 * @augments wp.customize.Partial
+	 * @augments wp.customize.selectiveRefresh.Partial
 	 * @since 4.5.0
 	 */
-	self.WidgetInstancePartial = api.Partial.extend({
-
-		/**
-		 * Constructor.
-		 *
-		 * @since 4.5.0
-		 * @param {string} id - Partial ID.
-		 * @param {Object} options -
-		 * @param {Object} options.params
-		 */
-		initialize: function( id, options ) {
-			var partial = this, matches;
-			matches = id.match( /^widget_instance\[(.+)]$/ );
-			if ( ! matches ) {
-				throw new Error( 'Illegal id for widget_instance partial.' );
-			}
-
-			partial.widgetId = matches[1];
-			options = options || {};
-			options.params = _.extend(
-				{
-					/* Note that a selector of ('#' + partial.widgetId) is faster, but jQuery will only return the one result. */
-					selector: '[id="' + partial.widgetId + '"]', // Alternatively, '[data-customize-widget-id="' + partial.widgetId + '"]'
-					settings: [ self.getWidgetInstanceSettingId( partial.widgetId ) ],
-					containerInclusive: true
-				},
-				options.params || {}
-			);
-
-			api.Partial.prototype.initialize.call( partial, id, options );
-		},
-
-		/**
-		 * Send widget-updated message to parent so spinner will get removed from widget control.
-		 *
-		 * @todo Fill page refresh should be called by default if the response contains script:not([type]), script[type='text/javascript']?
-		 *
-		 * @inheritdoc
-		 * @param {object} container
-		 */
-		renderContent: function( container ) {
-			var partial = this;
-			if ( api.Partial.prototype.renderContent.call( partial, container ) ) {
-				api.preview.send( 'widget-updated', partial.widgetId );
-			}
-		}
-	});
-
-	/**
-	 * Partial representing a widget area.
-	 *
-	 * @class
-	 * @augments wp.customize.Partial
-	 * @since 4.5.0
-	 */
-	self.WidgetAreaPartial = api.Partial.extend({
+	self.WidgetPartial = api.selectiveRefresh.Partial.extend({
 
 		/**
 		 * Constructor.
@@ -110,9 +55,63 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 */
 		initialize: function( id, options ) {
 			var partial = this, matches;
-			matches = id.match( /^widget_area\[(.+)]$/ );
+			matches = id.match( /^widget\[(.+)]$/ );
 			if ( ! matches ) {
-				throw new Error( 'Illegal id for widget_area partial.' );
+				throw new Error( 'Illegal id for widget partial.' );
+			}
+
+			partial.widgetId = matches[1];
+			options = options || {};
+			options.params = _.extend(
+				{
+					/* Note that a selector of ('#' + partial.widgetId) is faster, but jQuery will only return the one result. */
+					selector: '[id="' + partial.widgetId + '"]', // Alternatively, '[data-customize-widget-id="' + partial.widgetId + '"]'
+					settings: [ self.getWidgetSettingId( partial.widgetId ) ],
+					containerInclusive: true
+				},
+				options.params || {}
+			);
+
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
+		},
+
+		/**
+		 * Send widget-updated message to parent so spinner will get removed from widget control.
+		 *
+		 * @inheritdoc
+		 * @param {wp.customize.selectiveRefresh.Placement} placement
+		 */
+		renderContent: function( placement ) {
+			var partial = this;
+			if ( api.selectiveRefresh.Partial.prototype.renderContent.call( partial, placement ) ) {
+				api.preview.send( 'widget-updated', partial.widgetId );
+				api.selectiveRefresh.trigger( 'widget-updated', partial );
+			}
+		}
+	});
+
+	/**
+	 * Partial representing a widget area.
+	 *
+	 * @class
+	 * @augments wp.customize.selectiveRefresh.Partial
+	 * @since 4.5.0
+	 */
+	self.SidebarPartial = api.selectiveRefresh.Partial.extend({
+
+		/**
+		 * Constructor.
+		 *
+		 * @since 4.5.0
+		 * @param {string} id - Partial ID.
+		 * @param {Object} options
+		 * @param {Object} options.params
+		 */
+		initialize: function( id, options ) {
+			var partial = this, matches;
+			matches = id.match( /^sidebar\[(.+)]$/ );
+			if ( ! matches ) {
+				throw new Error( 'Illegal id for sidebar partial.' );
 			}
 			partial.sidebarId = matches[1];
 
@@ -124,17 +123,14 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				options.params || {}
 			);
 
-			api.Partial.prototype.initialize.call( partial, id, options );
+			api.selectiveRefresh.Partial.prototype.initialize.call( partial, id, options );
 
 			if ( ! partial.params.sidebarArgs ) {
 				throw new Error( 'The sidebarArgs param was not provided.' );
 			}
 			if ( partial.params.settings.length > 1 ) {
-				throw new Error( 'Expected WidgetAreaPartial to only have one associated setting' );
+				throw new Error( 'Expected SidebarPartial to only have one associated setting' );
 			}
-
-			partial.containerStartBoundaryNode = null;
-			partial.containerEndBoundaryNode = null;
 		},
 
 		/**
@@ -144,13 +140,24 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 */
 		ready: function() {
 			var sidebarPartial = this;
+
+			// Watch for changes to the sidebar_widgets setting.
 			_.each( sidebarPartial.settings(), function( settingId ) {
-				api( settingId, function( setting ) {
-					setting.bind( _.bind( sidebarPartial.handleSettingChange, sidebarPartial ) );
-				} );
+				api( settingId ).bind( _.bind( sidebarPartial.handleSettingChange, sidebarPartial ) );
 			} );
 
-			// Make sure that a widget_instance partial has a container in the DOM prior to a refresh.
+			// Trigger an event for this sidebar being updated whenever a widget inside is rendered.
+			api.selectiveRefresh.bind( 'partial-content-rendered', function( placement ) {
+				var isAssignedWidgetPartial = (
+					placement.partial.extended( self.WidgetPartial ) &&
+					( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), placement.partial.widgetId ) )
+				);
+				if ( isAssignedWidgetPartial ) {
+					api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
+				}
+			} );
+
+			// Make sure that a widget partial has a container in the DOM prior to a refresh.
 			api.bind( 'change', function( widgetSetting ) {
 				var widgetId, parsedId;
 				parsedId = self.parseWidgetSettingId( widgetSetting.id );
@@ -161,17 +168,9 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				if ( parsedId.number ) {
 					widgetId += '-' + String( parsedId.number );
 				}
-
-				_.each( sidebarPartial.settings(), function( settingId ) {
-					var sidebarSetting = api( settingId ), sidebarWidgetIds;
-					if ( ! sidebarSetting ) {
-						return;
-					}
-					sidebarWidgetIds = sidebarSetting();
-					if ( _.isArray( sidebarWidgetIds ) && -1 !== _.indexOf( sidebarWidgetIds, widgetId ) ) {
-						sidebarPartial.ensureWidgetInstanceContainers( widgetId );
-					}
-				} );
+				if ( -1 !== _.indexOf( sidebarPartial.getWidgetIds(), widgetId ) ) {
+					sidebarPartial.ensureWidgetPlacementContainers( widgetId );
+				}
 			} );
 		},
 
@@ -217,21 +216,23 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		},
 
 		/**
-		 * Get the containers for this partial.
+		 * Get the placements for this partial.
 		 *
 		 * @since 4.5.0
 		 * @returns {Array}
 		 */
-		containers: function() {
+		placements: function() {
 			var partial = this;
 			return _.map( partial.findDynamicSidebarBoundaryNodes(), function( boundaryNodes ) {
-				return {
-					element: null,
-					beforeNode: boundaryNodes.before,
-					afterNode: boundaryNodes.after,
-					context: partial.params.sidebarArgs,
-					instanceNumber: boundaryNodes.instanceNumber
-				};
+				return new api.selectiveRefresh.Placement( {
+					partial: partial,
+					container: null,
+					startNode: boundaryNodes.before,
+					endNode: boundaryNodes.after,
+					context: {
+						instanceNumber: boundaryNodes.instanceNumber
+					}
+				} );
 			} );
 		},
 
@@ -262,29 +263,34 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * Reflow widgets in the sidebar, ensuring they have the proper position in the DOM.
 		 *
 		 * @since 4.5.0
+		 *
+		 * @return {Array.<wp.customize.selectiveRefresh.Placement>} List of placements that were reflowed.
 		 */
 		reflowWidgets: function() {
-			var sidebarPartial = this, sidebarContainers, widgetIds, widgetPartials;
+			var sidebarPartial = this, sidebarPlacements, widgetIds, widgetPartials, sortedSidebarContainers = [];
 			widgetIds = sidebarPartial.getWidgetIds();
-			sidebarContainers = sidebarPartial.containers();
+			sidebarPlacements = sidebarPartial.placements();
 
 			widgetPartials = {};
 			_.each( widgetIds, function( widgetId ) {
-				widgetPartials[ widgetId ] = sidebarPartial.ensureWidgetInstanceContainers( widgetId );
+				var widgetPartial = api.selectiveRefresh.partial( 'widget[' + widgetId + ']' );
+				if ( widgetPartial ) {
+					widgetPartials[ widgetId ] = widgetPartial;
+				}
 			} );
 
-			// Ensure that there are containers for all of the widgets, and that the order is correct.
-			_.each( sidebarContainers, function( sidebarContainer ) {
+			_.each( sidebarPlacements, function( sidebarPlacement ) {
 				var sidebarWidgets = [], needsSort = false, thisPosition, lastPosition = -1;
 
 				// Gather list of widget partial containers in this sidebar, and determine if a sort is needed.
 				_.each( widgetPartials, function( widgetPartial ) {
-					_.each( widgetPartial.containers(), function( widgetContainer ) {
-						if ( sidebarContainer.instanceNumber === widgetContainer.context.sidebar_instance_number ) {
-							thisPosition = widgetContainer.element.index();
+					_.each( widgetPartial.placements(), function( widgetPlacement ) {
+
+						if ( sidebarPlacement.context.instanceNumber === widgetPlacement.context.sidebar_instance_number ) {
+							thisPosition = widgetPlacement.container.index();
 							sidebarWidgets.push( {
 								partial: widgetPartial,
-								container: widgetContainer,
+								placement: widgetPlacement,
 								position: thisPosition
 							} );
 							if ( thisPosition < lastPosition ) {
@@ -297,19 +303,24 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 
 				if ( needsSort ) {
 					_.each( sidebarWidgets, function( sidebarWidget ) {
-						sidebarContainer.afterNode.parentNode.insertBefore(
-							sidebarWidget.container.element[0],
-							sidebarContainer.afterNode
+						sidebarPlacement.endNode.parentNode.insertBefore(
+							sidebarWidget.placement.container[0],
+							sidebarPlacement.endNode
 						);
 
-						api.trigger( 'partial-content-moved', {
-							partial: sidebarWidget.partial,
-							context: sidebarWidget.container.context,
-							container: sidebarWidget.container.element
-						} );
+						// @todo Rename partial-placement-moved?
+						api.selectiveRefresh.trigger( 'partial-content-moved', sidebarWidget.placement );
 					} );
+
+					sortedSidebarContainers.push( sidebarPlacement );
 				}
 			} );
+
+			if ( sortedSidebarContainers.length > 0 ) {
+				api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
+			}
+
+			return sortedSidebarContainers;
 		},
 
 		/**
@@ -317,63 +328,52 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 *
 		 * @since 4.5.0
 		 *
-		 * @todo This is an expensive operation. Optimize.
-		 *
 		 * @param {string} widgetId
-		 * @returns {wp.customize.Partial} Widget instance partial.
+		 * @returns {wp.customize.selectiveRefresh.Partial} Widget instance partial.
 		 */
-		ensureWidgetInstanceContainers: function( widgetId ) {
-			var sidebarPartial = this, widgetPartial, wasInserted = false, partialId = 'widget_instance[' + widgetId + ']';
-			widgetPartial = api.partial( partialId );
+		ensureWidgetPlacementContainers: function( widgetId ) {
+			var sidebarPartial = this, widgetPartial, wasInserted = false, partialId = 'widget[' + widgetId + ']';
+			widgetPartial = api.selectiveRefresh.partial( partialId );
 			if ( ! widgetPartial ) {
-				widgetPartial = new self.WidgetInstancePartial( partialId, {
+				widgetPartial = new self.WidgetPartial( partialId, {
 					params: {}
 				} );
-				api.partial.add( widgetPartial.id, widgetPartial );
+				api.selectiveRefresh.partial.add( widgetPartial.id, widgetPartial );
 			}
 
 			// Make sure that there is a container element for the widget in the sidebar, if at least a placeholder.
-			_.each( sidebarPartial.containers(), function( widgetAreaContainer ) {
-				var widgetContainerElement;
-				_.each( widgetPartial.containers(), function( widgetInstanceContainer ) {
-					var elementNode, isBounded;
-					if ( ! widgetInstanceContainer.element ) {
-						return;
-					}
-					elementNode = widgetInstanceContainer.element[0];
-					isBounded = (
-						( widgetAreaContainer.beforeNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_FOLLOWING ) &&
-						( widgetAreaContainer.afterNode.compareDocumentPosition( elementNode ) & Node.DOCUMENT_POSITION_PRECEDING )
-					);
-					if ( isBounded ) {
-						widgetContainerElement = widgetInstanceContainer.element;
-					}
+			_.each( sidebarPartial.placements(), function( sidebarPlacement ) {
+				var foundWidgetPlacement, widgetContainerElement;
+
+				foundWidgetPlacement = _.find( widgetPartial.placements(), function( widgetPlacement ) {
+					return ( widgetPlacement.context.sidebar_instance_number === sidebarPlacement.context.instanceNumber );
+				} );
+				if ( foundWidgetPlacement ) {
+					return;
+				}
+
+				widgetContainerElement = $(
+					sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
+					sidebarPartial.params.sidebarArgs.after_widget
+				);
+
+				widgetContainerElement.attr( 'data-customize-partial-id', widgetPartial.id );
+				widgetContainerElement.attr( 'data-customize-partial-type', 'widget' );
+				widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
+
+				/*
+				 * Make sure the widget container element has the customize-container context data.
+				 * The sidebar_instance_number is used to disambiguate multiple instances of the
+				 * same sidebar are rendered onto the template, and so the same widget is embedded
+				 * multiple times.
+				 */
+				widgetContainerElement.data( 'customize-partial-placement-context', {
+					'sidebar_id': sidebarPartial.sidebarId,
+					'sidebar_instance_number': sidebarPlacement.context.instanceNumber
 				} );
 
-				if ( ! widgetContainerElement ) {
-					widgetContainerElement = $(
-						sidebarPartial.params.sidebarArgs.before_widget.replace( '%1$s', widgetId ).replace( '%2$s', 'widget' ) +
-						sidebarPartial.params.sidebarArgs.after_widget
-					);
-
-					widgetContainerElement.attr( 'data-customize-partial-id', widgetPartial.id );
-					widgetContainerElement.attr( 'data-customize-partial-type', 'widget_instance' );
-					widgetContainerElement.attr( 'data-customize-widget-id', widgetId );
-
-					/*
-					 * Make sure the widget container element has the customize-container context data.
-					 * The sidebar_instance_number is used to disambiguate multiple instances of the
-					 * same sidebar are rendered onto the template, and so the same widget is embedded
-					 * multiple times.
-					 */
-					widgetContainerElement.data( 'customize-partial-container-context', {
-						'sidebar_id': sidebarPartial.sidebarId,
-						'sidebar_instance_number': widgetAreaContainer.instanceNumber
-					} );
-
-					widgetAreaContainer.afterNode.parentNode.insertBefore( widgetContainerElement[0], widgetAreaContainer.afterNode );
-					wasInserted = true;
-				}
+				sidebarPlacement.endNode.parentNode.insertBefore( widgetContainerElement[0], sidebarPlacement.endNode );
+				wasInserted = true;
 			} );
 
 			if ( wasInserted ) {
@@ -392,7 +392,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		 * @param {Array} oldWidgetIds Old widget ids.
 		 */
 		handleSettingChange: function( newWidgetIds, oldWidgetIds ) {
-			var sidebarPartial = this, needsRefresh, widgetsRemoved, widgetsAdded, addedWidgetInstancePartials = [];
+			var sidebarPartial = this, needsRefresh, widgetsRemoved, widgetsAdded, addedWidgetPartials = [];
 
 			needsRefresh = (
 				( oldWidgetIds.length > 0 && 0 === newWidgetIds.length ) ||
@@ -406,15 +406,15 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			// Handle removal of widgets.
 			widgetsRemoved = _.difference( oldWidgetIds, newWidgetIds );
 			_.each( widgetsRemoved, function( removedWidgetId ) {
-				var widgetPartial = api.partial( 'widget_instance[' + removedWidgetId + ']' );
+				var widgetPartial = api.selectiveRefresh.partial( 'widget[' + removedWidgetId + ']' );
 				if ( widgetPartial ) {
-					_.each( widgetPartial.containers(), function( container ) {
+					_.each( widgetPartial.placements(), function( placement ) {
 						var isRemoved = (
-							container.context.sidebar_id === sidebarPartial.sidebarId ||
-							( container.context.sidebar_args && container.context.sidebar_args.id === sidebarPartial.sidebarId )
+							placement.context.sidebar_id === sidebarPartial.sidebarId ||
+							( placement.context.sidebar_args && placement.context.sidebar_args.id === sidebarPartial.sidebarId )
 						);
 						if ( isRemoved ) {
-							container.element.remove();
+							placement.container.remove();
 						}
 					} );
 				}
@@ -423,15 +423,15 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 			// Handle insertion of widgets.
 			widgetsAdded = _.difference( newWidgetIds, oldWidgetIds );
 			_.each( widgetsAdded, function( addedWidgetId ) {
-				var widgetPartial = sidebarPartial.ensureWidgetInstanceContainers( addedWidgetId );
-				addedWidgetInstancePartials.push( widgetPartial );
+				var widgetPartial = sidebarPartial.ensureWidgetPlacementContainers( addedWidgetId );
+				addedWidgetPartials.push( widgetPartial );
 			} );
 
-			sidebarPartial.reflowWidgets();
-
-			_.each( addedWidgetInstancePartials, function( widgetPartial ) {
+			_.each( addedWidgetPartials, function( widgetPartial ) {
 				widgetPartial.refresh();
 			} );
+
+			api.selectiveRefresh.trigger( 'sidebar-updated', sidebarPartial );
 		},
 
 		/**
@@ -446,9 +446,12 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 				partial.fallback();
 			} );
 
-			if ( 0 === partial.containers().length ) {
+			if ( 0 === partial.placements().length ) {
 				deferred.reject();
 			} else {
+				_.each( partial.reflowWidgets(), function( sidebarPlacement ) {
+					api.selectiveRefresh.trigger( 'partial-content-rendered', sidebarPlacement );
+				} );
 				deferred.resolve();
 			}
 
@@ -456,8 +459,8 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 		}
 	});
 
-	api.partialConstructor.widget_area = self.WidgetAreaPartial;
-	api.partialConstructor.widget_instance = self.WidgetInstancePartial;
+	api.selectiveRefresh.partialConstructor.sidebar = self.SidebarPartial;
+	api.selectiveRefresh.partialConstructor.widget = self.WidgetPartial;
 
 	/**
 	 * Add partials for the registered widget areas (sidebars).
@@ -466,23 +469,16 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	 */
 	self.addPartials = function() {
 		_.each( self.registeredSidebars, function( registeredSidebar ) {
-			var partial, partialId = 'widget_area[' + registeredSidebar.id + ']';
-			partial = api.partial( partialId );
+			var partial, partialId = 'sidebar[' + registeredSidebar.id + ']';
+			partial = api.selectiveRefresh.partial( partialId );
 			if ( ! partial ) {
-				partial = new self.WidgetAreaPartial( partialId, {
+				partial = new self.SidebarPartial( partialId, {
 					params: {
 						sidebarArgs: registeredSidebar
 					}
 				} );
-				api.partial.add( partial.id, partial );
+				api.selectiveRefresh.partial.add( partial.id, partial );
 			}
-
-			// Ensure there are partials created for each widget in the sidebar.
-			api( 'sidebars_widgets[' + registeredSidebar.id + ']', function( setting ) {
-				_.each( setting.get(), function( widgetId ) {
-					partial.ensureWidgetInstanceContainers( widgetId );
-				} );
-			} );
 		} );
 	};
 
@@ -626,7 +622,7 @@ wp.customize.widgetsPreview = wp.customize.WidgetCustomizerPreview = (function( 
 	 * @param {string} widgetId Widget ID.
 	 * @returns {string} settingId Setting ID.
 	 */
-	self.getWidgetInstanceSettingId = function( widgetId ) {
+	self.getWidgetSettingId = function( widgetId ) {
 		var parsed = this.parseWidgetId( widgetId ), settingId;
 
 		settingId = 'widget_' + parsed.idBase;

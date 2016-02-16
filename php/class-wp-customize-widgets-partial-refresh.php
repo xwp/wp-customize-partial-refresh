@@ -55,7 +55,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	}
 
 	/**
-	 * Filter args for nav_menu partials.
+	 * Filter args for dynamic widget partials.
 	 *
 	 * @since 4.5.0
 	 *
@@ -65,7 +65,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 */
 	public function customize_dynamic_partial_args( $partial_args, $partial_id ) {
 
-		if ( preg_match( '/^widget_instance\[.+\]$/', $partial_id ) ) {
+		if ( preg_match( '/^widget\[.+\]$/', $partial_id ) ) {
 			if ( false === $partial_args ) {
 				$partial_args = array();
 			}
@@ -118,15 +118,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 	}
 
 	/**
-	 * Sidebar args from request context to merge on top of the dynamic sidebar args.
-	 *
-	 * @since 4.5.0
-	 * @var array
-	 * @access private
-	 */
-	protected $sidebar_args_overrides = array();
-
-	/**
 	 * Keep track of the arguments that are being passed to the_widget().
 	 *
 	 * @param array $params {
@@ -145,8 +136,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 				'before_widget' => '',
 				'after_widget' => '',
 			),
-			$params[0],
-			$this->sidebar_args_overrides
+			$params[0]
 		);
 
 		// Skip widgets not in a registered sidebar or ones which lack a proper wrapper element to attach the data-* attributes to.
@@ -165,11 +155,8 @@ class WP_Customize_Widgets_Partial_Refresh {
 		}
 		$this->before_widget_tags_seen[ $matches['tag_name'] ] = true;
 
-		$sidebar_args = $this->ksort_recursive( $sidebar_args );
-
 		$context = array(
-			'sidebar_args' => $sidebar_args,
-			'sidebar_args_hmac' => $this->hash_sidebar_args( $sidebar_args ),
+			'sidebar_id' => $sidebar_args['id'],
 		);
 		if ( isset( $this->context_sidebar_instance_number ) ) {
 			$context['sidebar_instance_number'] = $this->context_sidebar_instance_number;
@@ -177,9 +164,9 @@ class WP_Customize_Widgets_Partial_Refresh {
 			$context['sidebar_instance_number'] = $this->sidebar_instance_count[ $sidebar_args['id'] ];
 		}
 
-		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget_instance[' . $sidebar_args['widget_id'] . ']' ) );
-		$attributes .= ' data-customize-partial-type="widget_instance"';
-		$attributes .= sprintf( ' data-customize-partial-container-context="%s"', esc_attr( wp_json_encode( $context ) ) );
+		$attributes = sprintf( ' data-customize-partial-id="%s"', esc_attr( 'widget[' . $sidebar_args['widget_id'] . ']' ) );
+		$attributes .= ' data-customize-partial-type="widget"';
+		$attributes .= sprintf( ' data-customize-partial-placement-context="%s"', esc_attr( wp_json_encode( $context ) ) );
 		$attributes .= sprintf( ' data-customize-widget-id="%s"', esc_attr( $sidebar_args['widget_id'] ) );
 		$sidebar_args['before_widget'] = preg_replace( '#^(<\w+)#', '$1 ' . $attributes, $sidebar_args['before_widget'] );
 
@@ -190,7 +177,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 	/**
 	 * List of the tag names seen for before_widget strings.
 	 *
-	 * This is used in the filter_wp_kses_allowed_html filter to ebsure that the
+	 * This is used in the filter_wp_kses_allowed_html filter to ensure that the
 	 * data-* attributes can be whitelisted.
 	 *
 	 * @since 4.5.0
@@ -220,7 +207,7 @@ class WP_Customize_Widgets_Partial_Refresh {
 				array_fill_keys( array(
 					'data-customize-partial-id',
 					'data-customize-partial-type',
-					'data-customize-partial-container-context',
+					'data-customize-partial-placement-context',
 					'data-customize-partial-widget-id',
 					'data-customize-partial-options',
 				), true )
@@ -295,42 +282,6 @@ class WP_Customize_Widgets_Partial_Refresh {
 	}
 
 	/**
-	 * Recursive ksort() to ensure input array is stable for HMAC.
-	 *
-	 * @since 4.5.0
-	 * @access private
-	 *
-	 * @param array $array Array to sort.
-	 * @return array Sorted array.
-	 */
-	protected function ksort_recursive( $array ) {
-		if ( is_array( $array ) ) {
-			ksort( $array );
-			foreach ( $array as $i => &$item ) {
-				$item = $this->ksort_recursive( $item );
-			}
-		}
-		return $array;
-	}
-
-	/**
-	 * Hash (hmac) the sidebar args to ensure they are not tampered with when submitted in the Ajax request.
-	 *
-	 * Note that the array is expected to be pre-sorted.
-	 *
-	 * @todo We should actually be able to get by without including sidebar_args in the context at all. We only need a sidebar_id. Explore removing sidebar_args.
-	 *
-	 * @since 4.5.0
-	 * @access public
-	 *
-	 * @param array $args The arguments to hash.
-	 * @return string
-	 */
-	public function hash_sidebar_args( $args ) {
-		return wp_hash( serialize( $args ) );
-	}
-
-	/**
 	 * Current sidebar being rendered.
 	 *
 	 * @since 4.5.0
@@ -374,69 +325,37 @@ class WP_Customize_Widgets_Partial_Refresh {
 	 * @param array                $context {
 	 *     Sidebar args supplied as container context.
 	 *
-	 *     @type string [$sidebar_id]        ID for sidebar for widget to render into.
-	 *     @type array  [$sidebar_args]      Sidebar args supplied as container context.
-	 *     @type string [$sidebar_args_hmac] HMAC for sidebar args.
+	 *     @type string $sidebar_id                ID for sidebar for widget to render into.
+	 *     @type int    [$sidebar_instance_number] Disambiguating instance number.
 	 * }
 	 * @return string|false
 	 */
 	public function render_widget_partial( $partial, $context ) {
 		$id_data = $partial->id_data();
 		$widget_id = array_shift( $id_data['keys'] );
-		$sidebar_id = null;
-		$sidebar_args = array();
-		if ( ! is_array( $context ) ) {
+		if ( ! is_array( $context ) || empty( $context['sidebar_id'] ) || ! is_registered_sidebar( $context['sidebar_id'] ) ) {
 			return false;
 		}
-
-		if ( ! empty( $context['sidebar_args'] ) ) {
-			if ( empty( $context['sidebar_args_hmac'] ) ) {
-				return false;
-			}
-			$context['sidebar_args'] = $this->ksort_recursive( $context['sidebar_args'] );
-			if ( ! hash_equals( $this->hash_sidebar_args( $context['sidebar_args'] ), $context['sidebar_args_hmac'] ) ) {
-				return false;
-			}
-			$sidebar_args = $context['sidebar_args'];
-		}
-
-		/*
-		 * Note that when a widget is first added to a sidebar, it only has a sidebar_id as context.
-		 * For existing widgets, and subsequent updates to the newly-added widget, the sidebar_args
-		 * will be available because they will be included in the partial's rendered response here.
-		 */
-		if ( ! empty( $context['sidebar_id'] ) ) {
-			$sidebar_id = $context['sidebar_id'];
-		} else if ( ! empty( $sidebar_args['id'] ) ) {
-			$sidebar_id = $sidebar_args['id'];
-		} else {
-			return false;
-		}
-
-		if ( ! is_registered_sidebar( $sidebar_id ) ) {
-			return false;
-		}
+		$this->rendering_sidebar_id = $context['sidebar_id'];
 
 		if ( isset( $context['sidebar_instance_number'] ) ) {
-			$this->context_sidebar_instance_number = $context['sidebar_instance_number'];
+			$this->context_sidebar_instance_number = intval( $context['sidebar_instance_number'] );
 		}
 
 		// Filter sidebars_widgets so that only the queried widget is in the sidebar.
-		$this->sidebar_args_overrides = $sidebar_args;
 		$this->rendering_widget_id = $widget_id;
-		$this->rendering_sidebar_id = $sidebar_id;
+
 		$filter_callback = array( $this, 'filter_sidebars_widgets_for_rendering_widget' );
 		add_filter( 'sidebars_widgets', $filter_callback, 1000 );
 
 		// Render the widget.
 		ob_start();
-		dynamic_sidebar( $sidebar_id );
+		dynamic_sidebar( $this->rendering_sidebar_id = $context['sidebar_id'] );
 		$container = ob_get_clean();
 
 		// Reset variables for next partial render.
 		remove_filter( 'sidebars_widgets', $filter_callback, 1000 );
 		$this->context_sidebar_instance_number = null;
-		$this->sidebar_args_overrides = array();
 		$this->rendering_sidebar_id = null;
 		$this->rendering_widget_id = null;
 
