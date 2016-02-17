@@ -479,10 +479,12 @@ class WP_Customize_Selective_Refresh {
 
 		$this->manager->remove_preview_signature();
 
-		if ( ! check_ajax_referer( 'preview-customize_' . $this->manager->get_stylesheet(), 'nonce', false ) ) {
-			status_header( 403 );
-			wp_send_json_error( 'nonce_check_fail' );
-		} else if ( ! current_user_can( 'customize' ) || ! is_customize_preview() ) {
+		/*
+		 * Note that is_customize_preview() returning true will entail that the
+		 * user passed the 'customize' capability check and the nonce check, since
+		 * WP_Customize_Manager::setup_theme() is where the previewing flag is set.
+		 */
+		if ( ! is_customize_preview() ) {
 			status_header( 403 );
 			wp_send_json_error( 'expected_customize_preview' );
 		} else if ( ! isset( $_POST['partials'] ) ) {
