@@ -18,6 +18,10 @@ Development of this plugin is done [on GitHub](https://github.com/xwp/wp-customi
 
 == Changelog ==
 
+= 0.6.2 =
+* Short-circuit plugin if Selective Refresh feature has been merged into core. See [#27355](https://core.trac.wordpress.org/ticket/27355).
+* Add more unit tests.
+
 = 0.6.1 =
 Fix Jetpack plugin support to use new `container` event property.
 

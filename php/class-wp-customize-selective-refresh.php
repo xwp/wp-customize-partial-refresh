@@ -20,7 +20,7 @@ class WP_Customize_Selective_Refresh {
 	/**
 	 * Not relevant to #coremerge.
 	 */
-	const VERSION = '0.6.1';
+	const VERSION = '0.6.2';
 
 	/**
 	 * Query var used in requests to render partials.
