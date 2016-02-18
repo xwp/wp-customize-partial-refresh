@@ -277,15 +277,6 @@ class Test_WP_Customize_Selective_Refresh extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test WP_Customize_Selective_Refresh::handle_render_partials_request().
-	 *
-	 * @see WP_Customize_Selective_Refresh::handle_render_partials_request()
-	 */
-	function test_handle_render_partials_request() {
-		$this->markTestIncomplete();
-	}
-
-	/**
 	 * Tear down.
 	 */
 	function tearDown() {
